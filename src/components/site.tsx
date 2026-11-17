@@ -20,6 +20,7 @@ export function SiteHeader() {
           <Link href="/#how" className="hidden sm:inline py-2 text-ink-2 hover:text-ink">How it works</Link>
           <Link href="/#pricing" className="hidden sm:inline py-2 text-ink-2 hover:text-ink">Pricing</Link>
           <Link href="/guides" className="hidden sm:inline py-2 text-ink-2 hover:text-ink">Guides</Link>
+          <Link href="/me" className="py-2 text-ink-2 hover:text-ink">Sign in</Link>
           <Link href="/start" className="btn btn-primary !min-h-[42px] !px-4 text-[0.95rem]">Free check</Link>
         </nav>
       </div>
@@ -52,6 +53,7 @@ export function SiteFooter() {
             <li><Link className="text-ink-2 hover:text-ink" href="/autopilot">Weekly autopilot</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/tools/google-review-link">Free review QR code</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/guides">Guides</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/me">Sign in</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/account">Manage subscription</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/privacy">Privacy</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/terms">Terms</Link></li>

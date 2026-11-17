@@ -9,6 +9,8 @@ export default function Privacy() {
       <p>Your business name and public listing details from Google, the answers you give us about your business, and your email address. Payments are handled by Stripe. We never see your card details.</p>
       <h2>How we use it</h2>
       <p>To run your free check, write your Launch Kit, and send your weekly email. To do that, we send your business details (never your email) to AI providers such as Anthropic (Claude), OpenAI, Perplexity and Google, and to data providers such as Google Places, DataForSEO and PredictHQ.</p>
+      <h2>Signing in</h2>
+      <p>You can sign in with an emailed link or with Google. If you use Google, we only receive your email address. We keep you signed in with one cookie for up to 30 days. We don't use advertising cookies.</p>
       <h2>What we don't do</h2>
       <p>We don't sell your data, and we never sign in to your Google, Yelp or other accounts.</p>
       <h2>Your choices</h2>

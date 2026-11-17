@@ -24,6 +24,9 @@ export const env = {
   emailFrom: process.env.EMAIL_FROM || "Opening Day <hello@example.com>",
   cronSecret: process.env.CRON_SECRET || "",
   siteUrl: (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, ""),
+  authSecret: process.env.AUTH_SECRET || "",
+  googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   freeChecksPerDay: Number(process.env.FREE_CHECKS_PER_DAY || 5),
 };
 

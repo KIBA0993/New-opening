@@ -101,3 +101,39 @@ export async function paidSession(sessionId: string): Promise<{ profile: OwnerPr
     return null;
   }
 }
+
+export interface Purchase {
+  sessionId: string;
+  product: Product | "credits";
+  business: string;
+  placeId: string;
+  industry: string;
+  created: number;
+  active?: boolean; // Autopilot only
+}
+
+/** Everything bought with this email, newest first. Used by the signed-in account page. */
+export async function purchasesFor(email: string): Promise<Purchase[]> {
+  if (!has.stripe()) return [];
+  const out: Purchase[] = [];
+  const seen = new Set<string>();
+  for (const variant of new Set([email, email.toLowerCase()])) {
+    for await (const s of stripe().checkout.sessions.list({ customer_details: { email: variant }, status: "complete", limit: 100, expand: ["data.subscription"] })) {
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      const m = (s.metadata || {}) as Record<string, string>;
+      if (!m.product || m.product === "credits") continue;
+      const sub = s.subscription && typeof s.subscription !== "string" ? s.subscription : null;
+      out.push({
+        sessionId: s.id,
+        product: m.product as Product,
+        business: m.name || "Your business",
+        placeId: m.placeId || "",
+        industry: m.industry || "",
+        created: s.created,
+        active: sub ? ["active", "trialing", "past_due"].includes(sub.status) : undefined,
+      });
+    }
+  }
+  return out.sort((a, b) => b.created - a.created);
+}
