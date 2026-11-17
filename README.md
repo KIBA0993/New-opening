@@ -28,6 +28,8 @@ Without keys everything runs on sample data, including checkout (it skips Stripe
 
 ## Deploy
 
+With only `ANTHROPIC_API_KEY` set, Claude does all the AI work: the kit, the weekly email, web search for listings, rivals and events, and the free check (3 customer questions to Claude). Add OpenAI, Perplexity or Gemini keys later and each becomes another row in the check. AI answers are cached per question and city for a day, so the next owner in the same area gets them instantly. The Google readiness score shows in about 2 seconds, before any AI call.
+
 Vercel: import the repo, add the env vars, done. `vercel.json` schedules the weekly email for Mondays 14:00 UTC.
 
 ## SEO and AI search (GEO)

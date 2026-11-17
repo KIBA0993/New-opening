@@ -1,11 +1,12 @@
 import "server-only";
+import { z } from "zod";
 import { industryBySlug, searchTerm, buildPrompts } from "./industries";
 import { seeded } from "./mock";
-import { askEngine, engineAvailable, mentions, writeJSON } from "./providers/ai";
+import { cachedAsk, checkEngines, mentions, writeJSON } from "./providers/ai";
 import { findEvents, type RawEvent } from "./providers/events";
 import { findRivals, getPlace, latestReviews } from "./providers/places";
 import { postUpdateTasks, readUpdateTasks, rivalAnnouncements } from "./providers/rivalMoves";
-import type { Engine, LocalEvent, OwnerProfile, Place, RivalMove, WeeklyDigest } from "./types";
+import type { LocalEvent, OwnerProfile, Place, RivalMove, WeeklyDigest } from "./types";
 
 // What we remember between weeks (kept small enough for Stripe subscription metadata).
 export interface Snapshot {
@@ -31,7 +32,13 @@ export function unpackSnapshot(s?: string | null): Snapshot | null {
   }
 }
 
-const ENGINES: Engine[] = ["chatgpt", "perplexity", "gemini"];
+const DigestSchema = z.object({
+  googlePost: z.string(),
+  counters: z.array(z.string()),
+  reviewReplies: z.array(z.string()),
+  campaign: z.object({ title: z.string(), idea: z.string() }),
+  events: z.array(z.object({ why: z.string(), pitch: z.string() })),
+});
 
 export async function composeDigest(profile: OwnerProfile, prev: Snapshot | null): Promise<{ digest: WeeklyDigest; next: Snapshot }> {
   const industry = industryBySlug(profile.industry)!;
@@ -44,11 +51,12 @@ export async function composeDigest(profile: OwnerProfile, prev: Snapshot | null
 
   // 1) AI visibility re-check: one prompt per engine keeps the weekly cost to a few cents.
   const prompt = buildPrompts(industry, term, area)[0];
+  const { engines, demo: enginesDemo } = checkEngines();
   const visibility = await Promise.all(
-    ENGINES.map(async (engine) => {
-      if (!engineAvailable(engine)) return { engine, prompt, mentionsYou: seeded(profile.name + engine)() > 0.6 };
+    engines.map(async (engine) => {
+      if (enginesDemo) return { engine, prompt, mentionsYou: seeded(profile.name + engine)() > 0.6 };
       try {
-        return { engine, prompt, mentionsYou: mentions(await askEngine(engine, prompt), place.name) };
+        return { engine, prompt, mentionsYou: mentions(await cachedAsk(engine, prompt, area), place.name) };
       } catch {
         return { engine, prompt, mentionsYou: false };
       }
@@ -87,13 +95,7 @@ export async function composeDigest(profile: OwnerProfile, prev: Snapshot | null
 
   // 4) Write it all in one call.
   const season = new Date().toLocaleString("en-US", { month: "long" });
-  const written = await writeJSON<{
-    googlePost: string;
-    counters: string[];
-    reviewReplies: string[];
-    campaign: { title: string; idea: string };
-    events: { why: string; pitch: string }[];
-  }>(
+  const written = await writeJSON(
     "You help a new local business owner do their weekly marketing in 5 minutes. Plain, friendly, specific. No hype words. Never invent facts.",
     `Business: ${place.name}, a ${term} in ${area}. ${industry.menuWord}: ${profile.services}. Different because: ${profile.different}. Month: ${season}.
 Rival moves this week:\n${moves.map((m, i) => `${i + 1}. ${m.rival}: ${m.move}`).join("\n") || "none"}
@@ -107,6 +109,7 @@ Return JSON: {
  "campaign": {"title": "", "idea": "one seasonal campaign idea in 2 sentences"},
  "events": [{"why": "why this event fits, one sentence", "pitch": "a short, friendly message to the organizer asking to join as a vendor or sponsor, under 500 chars, with [YOUR NAME] and [PHONE]"}]
 }`,
+    DigestSchema,
   );
 
   const fallbackCampaign = industry.campaigns[new Date().getDate() % industry.campaigns.length];

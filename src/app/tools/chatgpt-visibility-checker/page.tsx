@@ -6,14 +6,14 @@ import { SearchBox } from "@/components/SearchBox";
 import { SITE_URL } from "@/lib/site";
 
 const FAQ = [
-  { q: "Does ChatGPT recommend my business?", a: "Run the free check. We ask ChatGPT, Perplexity and Gemini the questions your customers ask, like 'best nail salon near me', and show whether you're named and who's named instead." },
+  { q: "Does ChatGPT recommend my business?", a: "Run the free check. We ask AI assistants, with live web search, the questions your customers ask, like 'best nail salon near me', and show whether you're named and who's named instead." },
   { q: "How do I get ChatGPT to recommend my business?", a: "Be complete and consistent on Google, Bing, Apple Maps, Yelp and Facebook, earn recent reviews, post weekly, and claim your ChatGPT business profile. The check shows which of these you're missing." },
   { q: "Is the AI visibility check free?", a: "Yes. No sign-up or card. We ask for an email only to send you your results." },
 ];
 
 export const metadata: Metadata = {
   title: "Does ChatGPT recommend your business? Free AI visibility checker",
-  description: "Free check: see if ChatGPT, Perplexity and Gemini recommend your local business, which nearby rivals they pick instead, and what to fix first.",
+  description: "Free check: see if AI assistants recommend your local business, which nearby rivals they pick instead, and what to fix first.",
   alternates: { canonical: "/tools/chatgpt-visibility-checker" },
 };
 
@@ -28,7 +28,7 @@ export default function Page() {
         <div>
           <p className="eyebrow">Free AI visibility checker</p>
           <h1 className="font-display mt-2 text-[2.3rem] leading-[1.07] sm:text-[3.1rem]">Does ChatGPT recommend your business?</h1>
-          <p className="mt-4 text-[1.1rem] text-ink-2">We ask ChatGPT, Perplexity and Gemini what your customers ask, find your 5 closest rivals, and show who gets named instead of you. Free, in about a minute.</p>
+          <p className="mt-4 text-[1.1rem] text-ink-2">We ask AI assistants what your customers ask, find your 5 closest rivals, and show who gets named instead of you. Free, in about a minute.</p>
           <div className="mt-8 max-w-xl"><SearchBox /></div>
         </div>
         <SampleAnswer industry="beauty" />

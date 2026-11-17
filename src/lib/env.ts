@@ -3,6 +3,8 @@
 
 export const env = {
   googlePlaces: process.env.GOOGLE_PLACES_API_KEY || "",
+  anthropic: process.env.ANTHROPIC_API_KEY || "",
+  claudeModel: process.env.CLAUDE_MODEL || "claude-opus-5-5",
   openai: process.env.OPENAI_API_KEY || "",
   openaiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
   openaiWriterModel: process.env.OPENAI_WRITER_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini",
@@ -27,10 +29,12 @@ export const env = {
 
 export const has = {
   places: () => !!env.googlePlaces,
+  anthropic: () => !!env.anthropic,
   openai: () => !!env.openai,
   perplexity: () => !!env.perplexity,
   gemini: () => !!env.gemini,
-  anyAI: () => !!(env.openai || env.perplexity || env.gemini),
+  anyAI: () => !!(env.anthropic || env.openai || env.perplexity || env.gemini),
+  webSearch: () => !!(env.anthropic || env.perplexity || env.openai),
   stripe: () => !!env.stripe,
   dataforseo: () => !!(env.dataforseoLogin && env.dataforseoPassword),
   predicthq: () => !!env.predicthq,

@@ -14,7 +14,7 @@ export function GET() {
 Opening Day is self-serve software. Owners stay in control of their own profiles; it never signs in to their accounts.
 
 ## Free tools
-- [AI visibility checker](${SITE_URL}/tools/chatgpt-visibility-checker): checks whether ChatGPT, Perplexity and Gemini recommend a local business and which nearby rivals they name instead.
+- [AI visibility checker](${SITE_URL}/tools/chatgpt-visibility-checker): checks whether AI assistants recommend a local business and which nearby rivals they name instead.
 - [Google review link and QR code generator](${SITE_URL}/tools/google-review-link): free direct review link and printable QR code.
 
 ## Who it's for

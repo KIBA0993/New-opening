@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { z } from "zod";
 import { industryBySlug } from "./industries";
 import { writeJSON } from "./providers/ai";
 import type { LaunchKit, OwnerProfile } from "./types";
@@ -11,6 +12,19 @@ Rules:
 - Description: 600 to 740 characters. Short description: under 250 characters (for Apple Maps, Bing and Yelp).
 - Pick categories that exist in Google Business Profile's category list.
 - Never invent facts (prices, awards, years in business, certifications) that the owner didn't give. Use placeholders like [your price] when needed.`;
+
+const QA = z.object({ q: z.string(), a: z.string() });
+const KitSchema = z.object({
+  primaryCategory: z.string(),
+  secondaryCategories: z.array(z.string()),
+  description: z.string(),
+  shortDescription: z.string(),
+  services: z.array(z.object({ name: z.string(), description: z.string() })),
+  keywords: z.array(z.string()),
+  qa: z.array(QA),
+  posts: z.array(z.object({ title: z.string(), body: z.string() })),
+  reviewRequest: z.object({ sms: z.string(), email: z.string(), inPerson: z.string() }),
+});
 
 export async function writeKitUncached(p: OwnerProfile): Promise<LaunchKit> {
   const industry = industryBySlug(p.industry)!;
@@ -29,7 +43,7 @@ keywords (array of 10 phrases customers would type, including the city or neighb
 qa (array of 5 {q, a} a customer would ask, answered from the owner's facts),
 posts (array of 4 {title, body} Google posts for the first month: grand opening, a service spotlight, a meet-the-owner, and a seasonal one for ${new Date().toLocaleString("en-US", { month: "long" })}; body under 1200 chars),
 reviewRequest ({sms, email, inPerson}: a short text, a short email, and one line to say in person, all using [REVIEW LINK]).`;
-  const out = await writeJSON<Omit<LaunchKit, "demo">>(SYSTEM, user);
+  const out = await writeJSON(SYSTEM, user, KitSchema);
   if (out && out.description && Array.isArray(out.posts)) return { ...out, demo: false };
   return mockKit(p);
 }

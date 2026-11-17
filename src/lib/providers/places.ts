@@ -23,6 +23,7 @@ const FIELDS = [
   "photos",
   "googleMapsUri",
   "businessStatus",
+  "regularOpeningHours",
 ];
 
 interface GPlace {
@@ -41,6 +42,7 @@ interface GPlace {
   photos?: { name: string }[];
   googleMapsUri?: string;
   businessStatus?: string;
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
 }
 
 function cityFrom(p: GPlace): string | undefined {
@@ -69,6 +71,7 @@ function toPlace(p: GPlace): Place {
     lat: p.location?.latitude,
     lng: p.location?.longitude,
     photoName: p.photos?.[0]?.name,
+    hasHours: !!p.regularOpeningHours?.weekdayDescriptions?.length,
     mapsUrl: p.googleMapsUri,
     status: p.businessStatus,
   };

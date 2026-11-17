@@ -21,6 +21,7 @@ export interface Place {
   lat?: number;
   lng?: number;
   photoName?: string;
+  hasHours?: boolean;
   mapsUrl?: string;
   status?: string; // OPERATIONAL, CLOSED_TEMPORARILY, ...
 }
@@ -41,7 +42,7 @@ export interface OwnerProfile {
   email: string;
 }
 
-export type Engine = "chatgpt" | "perplexity" | "gemini";
+export type Engine = "chatgpt" | "claude" | "perplexity" | "gemini";
 
 export interface EngineAnswer {
   engine: Engine;

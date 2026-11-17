@@ -17,7 +17,7 @@ export function SampleAnswer({ industry = "beauty" }: { industry?: string }) {
   const s = SAMPLE[industry] || SAMPLE.beauty;
   return (
     <figure className="card relative rotate-[0.6deg] p-5 shadow-[0_18px_40px_-24px_rgba(28,26,22,0.45)] sm:p-6">
-      <figcaption className="eyebrow !text-ink-3">We asked ChatGPT</figcaption>
+      <figcaption className="eyebrow !text-ink-3">Example AI answer</figcaption>
       <p className="font-display mt-2 text-[1.35rem] leading-snug">“{s.q}”</p>
       <ol className="mt-4 space-y-2">
         {s.picks.map((p, i) => (
@@ -34,7 +34,7 @@ export function SampleAnswer({ industry = "beauty" }: { industry?: string }) {
           <Pill light="red">Not named</Pill>
         </li>
       </ol>
-      <p className="mt-4 text-[0.85rem] text-ink-3">Example. Your free check runs real questions on ChatGPT, Perplexity and Gemini.</p>
+      <p className="mt-4 text-[0.85rem] text-ink-3">Example. Your free check runs real questions with live web search.</p>
     </figure>
   );
 }
@@ -65,7 +65,7 @@ export function HowItWorks({ industry }: { industry?: Industry }) {
     {
       n: "1",
       title: "Free check, one minute",
-      body: "Type your business name. We ask ChatGPT, Perplexity and Gemini who they'd recommend near you, find your 5 closest rivals, and check where you're listed.",
+      body: "Type your business name. We ask AI assistants who they'd recommend near you, find your 5 closest rivals, and check where you're listed.",
     },
     {
       n: "2",
@@ -126,7 +126,7 @@ export function Pricing({ cta = "/start" }: { cta?: string }) {
           <h3 className="font-display text-[1.4rem]">Free check</h3>
           <p className="mt-1 text-[2.2rem] font-semibold">$0</p>
           <ul className="mt-4 space-y-2 text-ink-2">
-            {["What ChatGPT, Perplexity and Gemini say", "You vs. your 5 closest rivals", "Where you're listed and where you're missing"].map((t) => (
+            {["What AI assistants say about you", "You vs. your 5 closest rivals", "Where you're listed and where you're missing"].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
             ))}
           </ul>

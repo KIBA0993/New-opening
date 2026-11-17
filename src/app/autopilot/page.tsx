@@ -26,7 +26,7 @@ export default async function AutopilotPage({ searchParams }: { searchParams: Pr
           <p className="mt-4 text-[1.1rem] text-ink-2">Most owners set up their Google profile once and forget it. The ones who keep showing up post, reply and show up in their neighborhood every week. We write all of it for you.</p>
           <ul className="mt-6 space-y-3">
             {[
-              "Are ChatGPT, Perplexity and Gemini naming you yet?",
+              "Are AI assistants naming you yet?",
               "What your nearby rivals did this week, and your counter-move",
               "A Google post, ready to paste",
               "Replies to your new reviews, written",

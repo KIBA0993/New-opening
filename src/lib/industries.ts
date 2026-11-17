@@ -163,7 +163,7 @@ export const INDUSTRIES: Industry[] = [
     pains: [
       { title: "Agencies cost too much", body: "Most new practices can't justify a $1,000 retainer. You can do this yourself in an afternoon with us." },
       { title: "Patients compare before calling", body: "They check reviews, photos and hours. We make sure every profile is complete and matches." },
-      { title: "AI answers are new and unclear", body: "We show you exactly what ChatGPT, Perplexity and Gemini say when people ask for your kind of practice." },
+      { title: "AI answers are new and unclear", body: "We show you exactly what AI assistants say when people ask for your kind of practice." },
     ],
     kitExtras: ["Services written in plain language", "Insurance and booking info on every profile", "Patient review request templates"],
     promptTemplates: ["best {term} in {area}", "{term} near {area} accepting new patients", "recommended {term} in {area}"],

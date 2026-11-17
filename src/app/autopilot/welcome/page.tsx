@@ -44,7 +44,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
       <p className="eyebrow">You&apos;re in</p>
       <h1 className="font-display mt-2 text-[2.4rem] leading-tight">Your first weekly email is on its way.</h1>
       <p className="mt-4 text-ink-2">
-        We&apos;re checking ChatGPT, Perplexity and Gemini for {paid.profile.name} now, and looking at your rivals and events near you. Look for it in {paid.profile.email} in the next few minutes. After that, it arrives every Monday morning.
+        We&apos;re checking AI assistants for {paid.profile.name} now, and looking at your rivals and events near you. Look for it in {paid.profile.email} in the next few minutes. After that, it arrives every Monday morning.
       </p>
       <p className="mt-4 text-ink-2">Not seeing it? Check your promotions or spam folder and mark it as safe.</p>
       <div className="mt-8 flex flex-wrap gap-3">

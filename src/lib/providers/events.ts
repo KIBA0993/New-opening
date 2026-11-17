@@ -53,7 +53,7 @@ Only include events with a known date and a public web page. Return JSON: {"even
 }
 
 export async function findEvents(city: string, industry: Industry, lat?: number, lng?: number): Promise<{ events: RawEvent[]; demo: boolean }> {
-  const live = has.predicthq() || has.perplexity() || has.openai();
+  const live = has.predicthq() || has.webSearch();
   if (!live) return { events: mockEvents(city, industry), demo: true };
   const [a, b] = await Promise.all([
     has.predicthq() && lat != null && lng != null ? predictHQ(lat, lng).catch(() => []) : Promise.resolve([]),

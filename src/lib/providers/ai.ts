@@ -1,17 +1,39 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
+import type { z } from "zod";
 import { env, has } from "../env";
 import type { Engine } from "../types";
+import { askClaude, claudeSearchJSON, claudeWrite } from "./claude";
 
-// Thin wrappers around the three AI search engines we check, plus a JSON writer.
+// Thin wrappers around the AI engines we check (any with a key), plus a JSON writer.
 
 export const ENGINE_LABEL: Record<Engine, string> = {
   chatgpt: "ChatGPT",
+  claude: "Claude",
   perplexity: "Perplexity",
   gemini: "Gemini",
 };
 
+export const ALL_ENGINES: Engine[] = ["chatgpt", "claude", "perplexity", "gemini"];
+
 export function engineAvailable(e: Engine) {
-  return e === "chatgpt" ? has.openai() : e === "perplexity" ? has.perplexity() : has.gemini();
+  return e === "chatgpt" ? has.openai() : e === "claude" ? has.anthropic() : e === "perplexity" ? has.perplexity() : has.gemini();
+}
+
+/** Engines with a key. In demo mode (no AI keys at all) we show sample answers for ChatGPT, Perplexity and Gemini. */
+export function liveEngines(): Engine[] {
+  return ALL_ENGINES.filter(engineAvailable);
+}
+
+export function checkEngines(): { engines: Engine[]; demo: boolean } {
+  const live = liveEngines();
+  return live.length ? { engines: live, demo: false } : { engines: ["chatgpt", "perplexity", "gemini"], demo: true };
+}
+
+/** "Claude", "ChatGPT and Claude", "ChatGPT, Claude and Gemini" - for honest copy. */
+export function engineNames(): string {
+  const names = checkEngines().engines.map((e) => ENGINE_LABEL[e]);
+  return names.length <= 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 const ASK_SYSTEM =
@@ -71,14 +93,33 @@ async function askGemini(prompt: string): Promise<string> {
   return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
 }
 
-export async function askEngine(engine: Engine, prompt: string): Promise<string> {
+export async function askEngine(engine: Engine, prompt: string, city?: string): Promise<string> {
   if (engine === "chatgpt") return askOpenAI(prompt);
+  if (engine === "claude") return askClaude(prompt, city);
   if (engine === "perplexity") return askPerplexity(prompt);
   return askGemini(prompt);
 }
 
-/** Write structured content (profiles, emails). Returns null when no writer is configured. */
-export async function writeJSON<T>(system: string, user: string): Promise<T | null> {
+/**
+ * Answers are cached by question, not by business: "best nail salon in Austin" is the same
+ * answer for every nail salon in Austin, so after the first check in a city the rest are instant and free.
+ */
+export const cachedAsk = unstable_cache(
+  async (engine: Engine, prompt: string, city?: string) => askEngine(engine, prompt, city),
+  ["ask-v1"],
+  { revalidate: 60 * 60 * 24 },
+);
+
+/** Write structured content (profiles, emails). Claude first, then OpenAI. Returns null when no writer is configured. */
+export async function writeJSON<S extends z.ZodType>(system: string, user: string, schema: S): Promise<z.infer<S> | null> {
+  if (has.anthropic()) {
+    try {
+      return await claudeWrite(system, user, schema);
+    } catch (e) {
+      console.error("claudeWrite failed", e);
+      return null;
+    }
+  }
   if (!has.openai()) return null;
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -98,14 +139,23 @@ export async function writeJSON<T>(system: string, user: string): Promise<T | nu
   }
   const data = (await res.json()) as { choices: { message: { content: string } }[] };
   try {
-    return JSON.parse(data.choices[0].message.content) as T;
+    const parsed = schema.safeParse(JSON.parse(data.choices[0].message.content));
+    return parsed.success ? (parsed.data as z.infer<S>) : null;
   } catch {
     return null;
   }
 }
 
-/** Ask a web-searching model for JSON (Perplexity first, then ChatGPT with search). */
-export async function searchJSON<T>(prompt: string): Promise<T | null> {
+/** Ask a web-searching model for JSON (Claude first, then Perplexity, then ChatGPT with search). */
+export async function searchJSON<T>(prompt: string, city?: string): Promise<T | null> {
+  if (has.anthropic()) {
+    try {
+      return await claudeSearchJSON<T>(prompt, city);
+    } catch (e) {
+      console.error("claudeSearchJSON failed", e);
+      return null;
+    }
+  }
   const instr =
     "Search the web and answer with a single JSON object only, no prose, no code fences. If you are not sure, say so in the JSON rather than guessing.";
   let text = "";

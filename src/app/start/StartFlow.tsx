@@ -357,7 +357,7 @@ export function StartFlow() {
           <button className="btn btn-accent mt-6 w-full !min-h-[56px] text-[1.05rem]" disabled={busy}>
             {busy ? "Starting your check…" : "Run my free check"}
           </button>
-          <p className="mt-3 text-[0.9rem] text-ink-3">We'll ask ChatGPT, Perplexity and Gemini about businesses like yours near you. It takes about 30 seconds.</p>
+          <p className="mt-3 text-[0.9rem] text-ink-3">We'll ask AI assistants about businesses like yours near you. It takes about 30 seconds.</p>
         </form>
       )}
     </div>
