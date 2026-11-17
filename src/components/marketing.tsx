@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PRICES } from "@/lib/env";
+import { kitPrice, launchNote } from "@/lib/pricing";
 import type { Industry } from "@/lib/industries";
 import { Check, Pill, Section } from "./ui";
 
@@ -118,7 +119,8 @@ export function KitContents({ extras = [] }: { extras?: string[] }) {
   );
 }
 
-export function Pricing({ cta = "/start" }: { cta?: string }) {
+export async function Pricing({ cta = "/start" }: { cta?: string }) {
+  const kit = await kitPrice();
   return (
     <Section id="pricing" eyebrow="Pricing" title="Pay once to launch. Stay found for less than a lunch a week." className="mt-24">
       <div className="mt-10 grid gap-5 lg:grid-cols-3">
@@ -135,7 +137,8 @@ export function Pricing({ cta = "/start" }: { cta?: string }) {
         <div className="card relative border-ink p-6 outline outline-1 outline-ink">
           <span className="absolute -top-3 left-6 rounded-full bg-accent px-3 py-0.5 text-[0.8rem] font-semibold text-white">Most owners start here</span>
           <h3 className="font-display text-[1.4rem]">Launch Kit</h3>
-          <p className="mt-1 text-[2.2rem] font-semibold">{PRICES.kit.label} <span className="text-base font-normal text-ink-3">{PRICES.kit.note}</span></p>
+          <p className="mt-1 text-[2.2rem] font-semibold">{kit.label} <span className="text-base font-normal text-ink-3">one time</span></p>
+          {kit.leftAtPrice != null ? <p className="text-[0.9rem] font-semibold text-accent">{launchNote(kit)}</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
             {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep"].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>

@@ -42,7 +42,6 @@ export const has = {
 };
 
 export const PRICES = {
-  kit: { amount: 129, label: "$129", note: "one time" },
   monthly: { amount: 39, label: "$39", note: "per month" },
   yearly: { amount: 349, label: "$349", note: "per year (save $119)" },
 };

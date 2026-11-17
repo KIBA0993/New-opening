@@ -41,7 +41,7 @@ const p = (t: string) => `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvet
 const box = (t: string) =>
   `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:8px 0 12px;font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(t)}</div>`;
 
-export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string } = {}) {
+export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string } = {}) {
   const named = d.visibility.filter((v) => v.mentionsYou).length;
   const vis = d.visibility
     .map((v) => `${v.mentionsYou ? "🟢" : "🔴"} <b>${ENGINE_LABEL[v.engine]}</b> ${v.mentionsYou ? "named you" : "didn't name you"}`)
@@ -57,6 +57,7 @@ export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?
 ${p(`Five minutes, five things. Everything is written for you. Copy, paste, done.`)}
 ${h2(`1. Are AI tools recommending you? ${named} of ${d.visibility.length}`)}
 ${p(vis)}
+${links.account ? p(`Changed something? <a href="${links.account}" style="color:#B4441A">Run a fresh check now</a> with one of your monthly re-checks.`) : ""}
 ${h2("2. What your rivals did")}
 ${moves}
 ${h2("3. Your Google post for this week")}

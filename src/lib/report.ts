@@ -4,7 +4,7 @@ import { cache } from "react";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
-import { cachedAsk, checkEngines, excerptAround, mentions, searchJSON } from "./providers/ai";
+import { askEngine, cachedAsk, checkEngines, ENGINE_LABEL, excerptAround, mentions, searchJSON } from "./providers/ai";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
@@ -78,15 +78,16 @@ export function signals(place: Place, rivals: Place[]): { items: Signal[]; score
 
 // ---------- 2) Real AI answers, cached by question ----------
 
-async function runAnswers(placeName: string, rivalNames: string[], prompts: string[], area: string): Promise<{ answers: EngineAnswer[]; demo: boolean }> {
+async function runAnswers(placeName: string, rivalNames: string[], prompts: string[], area: string, fresh = false): Promise<{ answers: EngineAnswer[]; demo: boolean }> {
   const { engines, demo } = checkEngines();
-  if (demo) return { answers: mockAnswers(placeName, rivalNames, prompts, engines), demo: true };
+  if (demo) return { answers: mockAnswers(placeName, rivalNames, prompts, engines, fresh), demo: true };
   const perEngine = Math.max(1, Math.ceil(FREE_QUESTIONS / engines.length));
+  const ask = fresh ? askEngine : cachedAsk;
   const jobs = engines.flatMap((engine) => prompts.slice(0, perEngine).map((prompt) => ({ engine, prompt })));
   const answers = await Promise.all(
     jobs.map(async ({ engine, prompt }): Promise<EngineAnswer | null> => {
       try {
-        const text = await cachedAsk(engine, prompt, area);
+        const text = await ask(engine, prompt, area);
         const mentionsYou = mentions(text, placeName);
         const named = rivalNames.filter((r) => mentions(text, r));
         return { engine, prompt, mentionsYou, rivalsMentioned: named, excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || "") };
@@ -99,13 +100,13 @@ async function runAnswers(placeName: string, rivalNames: string[], prompts: stri
   return { answers: answers.filter(Boolean) as EngineAnswer[], demo: false };
 }
 
-function mockAnswers(placeName: string, rivalNames: string[], prompts: string[], engines: Engine[]): EngineAnswer[] {
-  const r = seeded(placeName);
+function mockAnswers(placeName: string, rivalNames: string[], prompts: string[], engines: Engine[], fresh = false): EngineAnswer[] {
+  const r = seeded(placeName + (fresh ? Date.now() : ""));
   return engines.map((engine, i) => {
     const prompt = prompts[i % prompts.length];
     const picks = rivalNames.filter(() => r() > 0.45).slice(0, 3);
     const rivalsMentioned = picks.length ? picks : rivalNames.slice(0, 2);
-    const mentionsYou = engine === "perplexity";
+    const mentionsYou = fresh ? r() > 0.5 : engine === "perplexity";
     return {
       engine,
       prompt,
@@ -197,7 +198,8 @@ const cachedListings = unstable_cache(
   { revalidate: 60 * 60 * 24 },
 );
 
-export async function aiReport(place: Place, industrySlug: IndustrySlug) {
+/** Full AI section. Wrapped in cache() so the score card and the details share one run per request. */
+export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) => {
   const { industry, term, area, isNew } = checkContext(place, industrySlug);
   const { rivals: rivalPlaces, demo: rivalsDemo } = await getRivals(place, industrySlug);
   const prompts = buildPrompts(industry, term, area);
@@ -216,6 +218,47 @@ export async function aiReport(place: Place, industrySlug: IndustrySlug) {
     rivals,
     demo: ans.demo || lst.demo || rivalsDemo || place.id.startsWith("demo_"),
   };
+});
+
+/** A paid re-check: asks every question again, skipping the cache. Costs one credit. */
+export async function freshCheck(place: Place, industrySlug: IndustrySlug) {
+  const { industry, term, area } = checkContext(place, industrySlug);
+  const { rivals } = await getRivals(place, industrySlug);
+  const res = await runAnswers(place.name, rivals.map((r) => r.name), buildPrompts(industry, term, area), area, true);
+  if (!res.answers.length) throw new Error("No AI answers came back.");
+  return { ...res, ...visibility(res.answers), checkedAt: new Date().toISOString() };
+}
+
+/** One number across every engine and question: the share of answers that name you. */
+export function visibility(answers: EngineAnswer[]) {
+  const pct = answers.length ? Math.round((answers.filter((a) => a.mentionsYou).length / answers.length) * 100) : 0;
+  const byEngine = [...new Set(answers.map((a) => a.engine))].map((engine) => {
+    const mine = answers.filter((a) => a.engine === engine);
+    return { engine, label: ENGINE_LABEL[engine], named: mine.filter((a) => a.mentionsYou).length, total: mine.length };
+  });
+  return { pct, byEngine };
+}
+
+// ---------- 4) Citation gaps: directories rivals are on and you aren't ----------
+
+export interface CitationGap {
+  platform: Platform;
+  rivalsListed: number;
+  rivalsTotal: number;
+  rivalNames: string[];
+  state: ListingCheck["state"];
+}
+
+const DIRECTORIES: Platform[] = ["yelp", "apple", "bing", "facebook"];
+
+export function citationGaps(listings: ListingCheck[], rivals: Rival[]): CitationGap[] {
+  return DIRECTORIES.map((platform) => {
+    const mine = listings.find((l) => l.platform === platform);
+    const on = rivals.filter((r) => r.profiles?.[platform]);
+    return { platform, rivalsListed: on.length, rivalsTotal: rivals.length, rivalNames: on.slice(0, 3).map((r) => r.name), state: mine?.state || "unknown" };
+  })
+    .filter((g) => g.state !== "found" && g.rivalsListed > 0)
+    .sort((a, b) => b.rivalsListed - a.rivalsListed);
 }
 
 export function aiSummary(answers: EngineAnswer[], rivals: Rival[]) {

@@ -31,7 +31,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
         const sub = await stripe().subscriptions.retrieve(subId);
         if (sub.metadata.snap) return; // already sent
         const { digest, next } = await composeDigest(paid.profile, null);
-        await sendEmail(paid.profile.email, `${digest.business}: your first 5-minute week`, renderDigestHtml(digest));
+        await sendEmail(paid.profile.email, `${digest.business}: your first 5-minute week`, renderDigestHtml(digest, { account: `${env.siteUrl}/autopilot/account?session_id=${session_id}` }));
         await stripe().subscriptions.update(subId, { metadata: { snap: packSnapshot(next) } });
       } catch (e) {
         console.error("welcome digest", e);
@@ -48,7 +48,8 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
       </p>
       <p className="mt-4 text-ink-2">Not seeing it? Check your promotions or spam folder and mark it as safe.</p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href={`/report/${encodeURIComponent(paid.profile.placeId)}?industry=${paid.profile.industry}`} className="btn btn-primary">See your free check</Link>
+        <Link href={`/autopilot/account?session_id=${encodeURIComponent(session_id)}`} className="btn btn-primary">Your re-checks</Link>
+        <Link href={`/report/${encodeURIComponent(paid.profile.placeId)}?industry=${paid.profile.industry}`} className="btn btn-ghost">See your free check</Link>
         <Link href={`${env.siteUrl}/account`} className="btn btn-ghost">Manage subscription</Link>
       </div>
     </div>

@@ -22,8 +22,10 @@ export async function GET(req: Request) {
     if (!profile || !to) continue;
     try {
       const { digest, next } = await composeDigest(profile, unpackSnapshot(sub.metadata.snap));
+      const checkout = (await stripe().checkout.sessions.list({ subscription: sub.id, limit: 1 })).data[0];
       const html = renderDigestHtml(digest, {
         report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
+        account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
       });
       await sendEmail(to, `${digest.business}: your 5-minute week`, html);
       await stripe().subscriptions.update(sub.id, { metadata: { snap: packSnapshot(next) } });

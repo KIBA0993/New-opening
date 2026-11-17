@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CREDITS } from "@/lib/credits";
 import { BuyButton } from "@/components/BuyButton";
 import { Check } from "@/components/ui";
 import { PRICES } from "@/lib/env";
@@ -32,6 +33,7 @@ export default async function AutopilotPage({ searchParams }: { searchParams: Pr
               "Replies to your new reviews, written",
               "One campaign idea for the season",
               "Local markets, fairs and drives to join or sponsor, with the pitch written",
+              `${CREDITS.monthly} on-demand AI re-checks a month, to see if a change worked`,
             ].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 text-good" />{t}</li>
             ))}

@@ -10,7 +10,10 @@ import { guessIndustry, industryBySlug } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
 import { getPlace } from "@/lib/providers/places";
 import { allowCheck } from "@/lib/ratelimit";
-import { aiReport, aiSummary, getRivals, nextFix, PLATFORM_LABEL, signals } from "@/lib/report";
+import { GUIDES } from "@/lib/platforms";
+import { kitPrice, launchNote } from "@/lib/pricing";
+import { GRID_SIZE, mapGrid } from "@/lib/providers/grid";
+import { aiReport, aiSummary, checkContext, citationGaps, getRivals, nextFix, PLATFORM_LABEL, signals, visibility } from "@/lib/report";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Your free check", robots: { index: false } };
@@ -46,10 +49,18 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
 
       {allowed ? (
         <>
+          <Suspense fallback={<AISkeleton engines={engineNames()} />}>
+            <VisibilityHero place={place} industry={industry} />
+          </Suspense>
           <Suspense fallback={<SignalsSkeleton />}>
             <SignalsSection place={place} industry={industry} />
           </Suspense>
-          <Suspense fallback={<AISkeleton engines={engineNames()} />}>
+          {place.id !== "new" ? (
+            <Suspense fallback={<div className="skeleton mt-12 h-72" />}>
+              <GridSection place={place} industry={industry} />
+            </Suspense>
+          ) : null}
+          <Suspense fallback={<div className="skeleton mt-12 h-96" />}>
             <AISection place={place} industry={industry} />
           </Suspense>
           <Unlock place={place} industry={industry} sharePath={path} />
@@ -75,22 +86,85 @@ function SignalsSkeleton() {
 
 function AISkeleton({ engines }: { engines: string }) {
   return (
-    <div role="status" aria-live="polite" className="mt-12">
+    <div role="status" aria-live="polite" className="mt-8">
       <div className="card p-6">
-        <p className="font-display text-[1.4rem]">Asking {engines} who they recommend near you…</p>
+        <p className="eyebrow">AI visibility</p>
+        <p className="font-display mt-2 text-[1.4rem]">Asking {engines} who they recommend near you…</p>
         <ul className="mt-4 space-y-2 text-ink-2">
           <li>Running the questions your customers ask, with live web search</li>
           <li>Looking for your listings on Yelp, Apple Maps, Bing and Facebook</li>
         </ul>
-        <p className="mt-4 text-[0.9rem] text-ink-3">Usually 10 to 30 seconds. Your score above is ready now.</p>
+        <p className="mt-4 text-[0.9rem] text-ink-3">Usually 10 to 30 seconds. Your Google score below is ready now.</p>
       </div>
-      <div className="skeleton mt-6 h-64" />
     </div>
   );
 }
 
 const STATE_LIGHT: Record<ListingState, Light> = { found: "green", different: "yellow", missing: "red", unknown: "gray" };
 const STATE_LABEL: Record<ListingState, string> = { found: "Listed", different: "Wrong details", missing: "Missing", unknown: "Can't tell" };
+
+/** The headline number: share of AI answers, across every engine, that name you. */
+async function VisibilityHero({ place, industry }: { place: Place; industry: IndustrySlug }) {
+  const report = await aiReport(place, industry);
+  const { pct, byEngine } = visibility(report.answers);
+  const s = aiSummary(report.answers, report.rivals);
+  const tone = pct >= 50 ? "text-good" : pct > 0 ? "text-warn" : "text-bad";
+  return (
+    <section aria-labelledby="vis" className="card mt-8 p-5 sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="eyebrow">AI visibility</p>
+        <DemoTag show={report.demo} />
+      </div>
+      <h2 id="vis" className="mt-2">
+        <span className={`font-display block text-[4.5rem] leading-none sm:text-[5.5rem] ${tone}`}>{pct}%</span>
+        <span className="mt-2 block text-[1.1rem] text-ink-2">of AI answers recommend you when customers ask for a {checkContext(place, industry).term} near you.</span>
+      </h2>
+      <p className="font-display mt-4 text-[1.3rem] leading-snug">{s.headline}</p>
+      <ul className="mt-4 flex flex-wrap gap-2">
+        {byEngine.map((e) => (
+          <li key={e.engine} className="rounded-full border border-line px-3 py-1 text-[0.92rem]">
+            <span className="font-semibold">{e.label}</span> named you {e.named} of {e.total}
+          </li>
+        ))}
+      </ul>
+      <a href="#answers" className="mt-4 inline-block text-[0.95rem] underline underline-offset-4">See every answer</a>
+    </section>
+  );
+}
+
+const GRID_TONE = (r: number | null) =>
+  r == null ? "bg-[#d9d1c3] text-ink-3" : r <= 3 ? "bg-good text-white" : r <= 10 ? "bg-warn text-white" : "bg-bad text-white";
+
+/** 5x5 Google Maps positions around the shop. */
+async function GridSection({ place, industry }: { place: Place; industry: IndustrySlug }) {
+  const { term } = checkContext(place, industry);
+  const grid = await mapGrid(place, term);
+  if (!grid) return null;
+  const center = Math.floor((GRID_SIZE * GRID_SIZE) / 2);
+  const across = Math.round(grid.spacingMiles * (GRID_SIZE - 1) * 10) / 10;
+  return (
+    <section aria-labelledby="grid" className="mt-12">
+      <div className="flex flex-wrap items-center gap-2">
+        <Pill light={grid.top3 >= 13 ? "green" : grid.top3 >= 5 ? "yellow" : "red"}>Top 3 in {grid.top3} of {grid.cells.length} spots</Pill>
+        <DemoTag show={grid.demo} />
+      </div>
+      <h2 id="grid" className="font-display mt-3 text-[1.7rem] leading-snug">Where you show up on Google Maps</h2>
+      <p className="mt-1 text-ink-2">
+        Your position for &ldquo;{grid.keyword}&rdquo; from 25 spots across {across} miles around you. AI assistants lean on these same Maps results.
+      </p>
+      <div className="mx-auto mt-5 grid max-w-sm gap-1.5" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` }} role="table" aria-label="Google Maps position by location, north at top">
+        {grid.cells.map((c, i) => (
+          <div key={i} role="cell" className={`flex aspect-square items-center justify-center rounded-lg text-[1rem] font-semibold ${GRID_TONE(c.rank)} ${i === center ? "ring-2 ring-ink ring-offset-2 ring-offset-paper" : ""}`} aria-label={`${i === center ? "Your shop: " : ""}${c.rank ? `position ${c.rank}` : "not in the top 20"}`}>
+            {c.rank ?? "20+"}
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-[0.9rem] text-ink-3">
+        Outlined square is your shop. Green is top 3, amber is 4 to 10, red is 11 to 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
+      </p>
+    </section>
+  );
+}
 
 /** Instant: Google profile signals vs. nearby rivals. No AI calls. */
 async function SignalsSection({ place, industry }: { place: Place; industry: IndustrySlug }) {
@@ -131,15 +205,16 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   const prompts = [...new Set(report.answers.map((a) => a.prompt))];
   const ind = industryBySlug(industry)!;
   const listed = report.listings.filter((l) => l.state === "found").length;
+  const gaps = citationGaps(report.listings, report.rivals);
 
   return (
     <>
-      <section aria-labelledby="ai" className="mt-12">
+      <section id="answers" aria-labelledby="ai" className="mt-12 scroll-mt-6">
         <div className="flex flex-wrap items-center gap-2">
           <Pill light={s.light}>{s.named} of {s.total} answers name you</Pill>
           <DemoTag show={report.demo} />
         </div>
-        <h2 id="ai" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">{s.headline}</h2>
+        <h2 id="ai" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">What AI assistants said</h2>
         <p className="mt-1 text-ink-2">We asked the questions your customers ask, with live web search.</p>
         <div className="mt-5 space-y-5">
           {prompts.map((prompt) => (
@@ -178,6 +253,37 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
         </ul>
       </section>
 
+      {gaps.length ? (
+        <section aria-labelledby="gaps" className="mt-12">
+          <h2 id="gaps" className="font-display text-[1.7rem] leading-snug">Where your rivals are listed and you aren&apos;t</h2>
+          <p className="mt-1 text-ink-2">AI assistants cross-check these sites. Each one your rivals have and you don&apos;t is a reason to pick them.</p>
+          <ul className="mt-5 space-y-3">
+            {gaps.map((g) => {
+              const guide = GUIDES.find((x) => x.platform === g.platform);
+              return (
+                <li key={g.platform} className="card p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold">{PLATFORM_LABEL[g.platform]}</p>
+                    <Pill light={g.state === "missing" ? "red" : "yellow"}>{g.rivalsListed} of {g.rivalsTotal} rivals listed</Pill>
+                  </div>
+                  <p className="mt-1 text-[0.95rem] text-ink-3">{g.rivalNames.join(", ")}{g.rivalsListed > g.rivalNames.length ? " and more" : ""} {g.rivalsListed === 1 ? "is" : "are"} here. {g.state === "missing" ? "You're not." : "We couldn't find you."}</p>
+                  {guide ? (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer font-semibold text-accent">How to get listed, about {guide.minutes} minutes</summary>
+                      <ol className="mt-2 list-decimal space-y-1 pl-5 text-[0.95rem] text-ink-2">
+                        {guide.steps.map((st) => <li key={st}>{st}</li>)}
+                      </ol>
+                      <a href={guide.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost mt-3">Open {guide.name}</a>
+                    </details>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-[0.9rem] text-ink-3">The Launch Kit fills in every field for you, ready to paste.</p>
+        </section>
+      ) : null}
+
       <section aria-labelledby="listings" className="mt-12">
         <h2 id="listings" className="font-display text-[1.7rem]">Where you're listed: {listed} of {report.listings.length}</h2>
         <p className="mt-1 text-ink-2">AI tools trust businesses whose details match everywhere.</p>
@@ -197,7 +303,8 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   );
 }
 
-function Unlock({ place, industry, sharePath }: { place: Place; industry: IndustrySlug; sharePath: string }) {
+async function Unlock({ place, industry, sharePath }: { place: Place; industry: IndustrySlug; sharePath: string }) {
+  const kit = await kitPrice();
   return (
     <>
       <section id="unlock" aria-labelledby="unlock-h" className="mt-12 scroll-mt-6 rounded-3xl bg-ink p-6 text-paper sm:p-9">
@@ -211,13 +318,13 @@ function Unlock({ place, industry, sharePath }: { place: Place; industry: Indust
         </ul>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px]">
-            Get my Launch Kit · {PRICES.kit.label}
+            Get my Launch Kit · {kit.label}
           </BuyButton>
           <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn w-full border border-[#6b6459] !min-h-[56px] text-paper hover:bg-[#2c2924]">
             Weekly Autopilot · {PRICES.monthly.label}/mo
           </BuyButton>
         </div>
-        <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">One-time payment for the kit. Secure checkout by Stripe.</p>
+        <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment for the kit. Secure checkout by Stripe.</p>
       </section>
       <section className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-ink-2">Share this check with a partner or friend.</p>

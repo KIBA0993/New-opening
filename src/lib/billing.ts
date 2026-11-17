@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { env, has, PRICES } from "./env";
+import { kitPrice } from "./pricing";
 import type { IndustrySlug, OwnerProfile } from "./types";
 
 export type Product = "kit" | "monthly" | "yearly";
@@ -47,15 +48,17 @@ export async function createCheckout(product: Product, profile: OwnerProfile): P
     const sid = demoSessionId(profile, product);
     return product === "kit" ? `${env.siteUrl}/kit?session_id=${sid}` : `${env.siteUrl}/autopilot/welcome?session_id=${sid}`;
   }
-  const metadata = { ...profileToMetadata(profile), product };
-  const priceId = product === "kit" ? env.stripePriceKit : product === "monthly" ? env.stripePriceMonthly : env.stripePriceYearly;
+  // The kit has a rising launch price, so it's always charged at today's amount (not a fixed price ID).
+  const kitAmount = product === "kit" ? (await kitPrice(true)).amount : 0;
+  const metadata = { ...profileToMetadata(profile), product, ...(product === "kit" ? { price: String(kitAmount) } : {}) };
+  const priceId = product === "kit" ? "" : product === "monthly" ? env.stripePriceMonthly : env.stripePriceYearly;
   const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = priceId
     ? { price: priceId, quantity: 1 }
     : {
         quantity: 1,
         price_data: {
           currency: "usd",
-          unit_amount: PRICES[product].amount * 100,
+          unit_amount: (product === "kit" ? kitAmount : PRICES[product].amount) * 100,
           product_data: { name: product === "kit" ? "Opening Day Launch Kit" : "Opening Day Weekly Autopilot" },
           ...(product === "kit" ? {} : { recurring: { interval: product === "monthly" ? "month" : "year" } }),
         },

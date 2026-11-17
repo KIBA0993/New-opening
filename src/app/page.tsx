@@ -4,6 +4,7 @@ import { SearchBox } from "@/components/SearchBox";
 import { BASE_FAQ, Faq, HowItWorks, KitContents, Pricing, SampleAnswer, Stats } from "@/components/marketing";
 import { faqLd, JsonLd } from "@/components/JsonLd";
 import { PRICES } from "@/lib/env";
+import { LAUNCH } from "@/lib/pricing";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Section } from "@/components/ui";
 import { INDUSTRIES } from "@/lib/industries";
@@ -26,7 +27,7 @@ export default function Home() {
             description: "Launch kit for new local businesses: free AI visibility check, AI-written profiles for Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT, and a weekly autopilot.",
             offers: [
               { "@type": "Offer", name: "Free check", price: "0", priceCurrency: "USD" },
-              { "@type": "Offer", name: "Launch Kit", price: String(PRICES.kit.amount), priceCurrency: "USD" },
+              { "@type": "Offer", name: "Launch Kit", price: String(LAUNCH.start), priceCurrency: "USD" },
               { "@type": "Offer", name: "Weekly Autopilot", price: String(PRICES.monthly.amount), priceCurrency: "USD" },
             ],
           },
