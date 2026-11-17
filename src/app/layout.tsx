@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description:
     "Free check: see if Google, Maps and ChatGPT recommend your new local business, and who they pick instead. Then set up every profile in one afternoon.",
   openGraph: { type: "website", siteName: "Opening Day" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = { themeColor: "#f4efe6", width: "device-width", initialScale: 1 };

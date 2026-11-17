@@ -1,12 +1,38 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
-import { Faq, HowItWorks, KitContents, Pricing, SampleAnswer, Stats } from "@/components/marketing";
+import { BASE_FAQ, Faq, HowItWorks, KitContents, Pricing, SampleAnswer, Stats } from "@/components/marketing";
+import { faqLd, JsonLd } from "@/components/JsonLd";
+import { PRICES } from "@/lib/env";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Section } from "@/components/ui";
 import { INDUSTRIES } from "@/lib/industries";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function Home() {
   return (
     <>
+      <JsonLd
+        data={[
+          { "@context": "https://schema.org", "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: SITE_NAME,
+            url: SITE_URL,
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description: "Launch kit for new local businesses: free AI visibility check, AI-written profiles for Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT, and a weekly autopilot.",
+            offers: [
+              { "@type": "Offer", name: "Free check", price: "0", priceCurrency: "USD" },
+              { "@type": "Offer", name: "Launch Kit", price: String(PRICES.kit.amount), priceCurrency: "USD" },
+              { "@type": "Offer", name: "Weekly Autopilot", price: String(PRICES.monthly.amount), priceCurrency: "USD" },
+            ],
+          },
+          faqLd(BASE_FAQ),
+        ]}
+      />
       <section className="mx-auto grid max-w-5xl gap-12 px-4 pt-10 pb-4 sm:px-6 sm:pt-16 lg:grid-cols-[1.25fr_1fr] lg:items-center">
         <div>
           <p className="eyebrow">For businesses that just opened</p>

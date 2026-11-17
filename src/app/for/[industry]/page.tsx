@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SearchBox } from "@/components/SearchBox";
-import { Faq, HowItWorks, KitContents, Pricing, SampleAnswer } from "@/components/marketing";
+import Link from "next/link";
+import { faqLd, JsonLd } from "@/components/JsonLd";
+import { BASE_FAQ, Faq, HowItWorks, KitContents, Pricing, SampleAnswer } from "@/components/marketing";
+import { GUIDES_CONTENT } from "@/lib/guides";
 import { Section } from "@/components/ui";
 import { INDUSTRIES, industryBySlug } from "@/lib/industries";
 
@@ -12,14 +15,16 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ industry: string }> }): Promise<Metadata> {
   const ind = industryBySlug((await params).industry);
   if (!ind) return {};
-  return { title: `Launch kit for new ${ind.name.toLowerCase()} businesses`, description: ind.hero.sub };
+  return { title: `Launch kit for new ${ind.name.toLowerCase()} businesses`, description: ind.hero.sub, alternates: { canonical: `/for/${ind.slug}` } };
 }
 
 export default async function IndustryPage({ params }: { params: Promise<{ industry: string }> }) {
   const ind = industryBySlug((await params).industry);
   if (!ind) notFound();
+  const guides = GUIDES_CONTENT.filter((g) => g.industry === ind.slug);
   return (
     <>
+      <JsonLd data={faqLd([...ind.faqs, ...BASE_FAQ])} />
       <section className="mx-auto grid max-w-5xl gap-12 px-4 pt-10 pb-4 sm:px-6 sm:pt-16 lg:grid-cols-[1.25fr_1fr] lg:items-center">
         <div>
           <p className="eyebrow">For new {ind.who}</p>
@@ -60,6 +65,16 @@ export default async function IndustryPage({ params }: { params: Promise<{ indus
         </div>
         <p className="mt-4 text-ink-3">Plus nearby {ind.eventKinds.slice(0, 3).join(", ")} to join, every week.</p>
       </Section>
+
+      {guides.length ? (
+        <Section eyebrow="Read first" title="A guide for you" className="mt-24">
+          <ul className="mt-6 space-y-2">
+            {guides.map((g) => (
+              <li key={g.slug}><Link className="link text-[1.15rem]" href={`/guides/${g.slug}`}>{g.title}</Link></li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
 
       <Pricing cta={`/start?industry=${ind.slug}`} />
       <Faq extra={ind.faqs} />

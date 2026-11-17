@@ -29,3 +29,11 @@ Without keys everything runs on sample data, including checkout (it skips Stripe
 ## Deploy
 
 Vercel: import the repo, add the env vars, done. `vercel.json` schedules the weekly email for Mondays 14:00 UTC.
+
+## SEO and AI search (GEO)
+
+- `sitemap.xml`, `robots.txt` (AI crawlers allowed; private pages blocked), `llms.txt`, a default share image, canonical URLs.
+- Structured data: Organization, SoftwareApplication with prices, FAQPage on home, industry pages, guides and tools; Article, HowTo and BreadcrumbList on guides.
+- Pages that target searches: 10 guides in `src/lib/guides.ts` (`/guides/...`) and two free tools: `/tools/chatgpt-visibility-checker` and `/tools/google-review-link`.
+- Every guide opens with a 2 to 3 sentence "short answer", the part AI tools quote.
+- `NEXT_PUBLIC_SITE_URL` is baked in at build time, so set it before the first Vercel build.

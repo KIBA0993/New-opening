@@ -160,7 +160,7 @@ export function Pricing({ cta = "/start" }: { cta?: string }) {
   );
 }
 
-const BASE_FAQ = [
+export const BASE_FAQ = [
   {
     q: "Do you set up my profiles for me?",
     a: "You stay in control. Google, Yelp and the others require the owner to sign in and verify, so we write every field, link you to the right page, and walk you through it. Most owners finish in one afternoon.",

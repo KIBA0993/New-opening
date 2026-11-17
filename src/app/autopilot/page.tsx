@@ -9,6 +9,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Weekly Autopilot",
+  alternates: { canonical: "/autopilot" },
   description: "One email every Monday: AI recommendation check, rival moves, a Google post and review replies written for you, and local events to join.",
 };
 
