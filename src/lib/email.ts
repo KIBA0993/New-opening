@@ -66,6 +66,7 @@ ${k.next ? `<p style="font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-
   return wrap(`
 <h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">${esc(d.business)}: your week of ${esc(d.weekOf)}</h1>
 ${p(`Five minutes, five things. Everything is written for you. Copy, paste, done.`)}
+${links.account ? `<p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459;margin:0 0 12px"><a href="${links.account}#this-week" style="color:#6B6459">Read this on the web</a>, along with your past weeks.</p>` : ""}
 ${links.trial ? `<p style="font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 12px;background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:10px 14px">This is your free week of the Autopilot, included with your Launch Kit. It renews on <b>${esc(links.trial.renews)}</b> at <b>${esc(links.trial.price)}</b> until you cancel. <a href="${links.trial.cancelUrl}" style="color:#B4441A">Cancel in one click</a>.</p>` : ""}
 ${kitBox}
 ${h2(`1. Are AI tools recommending you? ${named} of ${d.visibility.length}`)}
@@ -101,7 +102,7 @@ ${p(`Don't want it? <a href="${trial.cancelUrl}" style="color:#B4441A">Cancel th
   return wrap(`<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">Your Launch Kit for ${esc(name)} is ready</h1>
 ${p("Everything is written. Set aside one afternoon, go step by step, and tap copy next to each piece.")}
 ${p(`<a href="${kitUrl}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">Open my Launch Kit</a>`)}
-${p("Keep this email. The link is your key to the kit.")}
+${p(`Keep this email. The link is your key to the kit. You can also <a href="${env.siteUrl}/me" style="color:#B4441A">sign in to your account</a> any time with this email address to see your Kit and your Autopilot in one place.`)}
 ${trialBlock}`);
 }
 

@@ -53,6 +53,13 @@ async function subIdFor(sessionId: string) {
   return typeof s.subscription === "string" ? s.subscription : s.subscription?.id || null;
 }
 
+/** Re-checks left on a subscription, read from its metadata (no extra Stripe calls). */
+export function creditsLeft(sub: { status: string; metadata: Record<string, string> }) {
+  const allowance = sub.status === "trialing" ? Math.min(CREDITS.trial, CREDITS.monthly) : CREDITS.monthly;
+  const { used, extra } = parse(sub.metadata as Stored);
+  return Math.max(0, allowance - used) + extra;
+}
+
 /** The subscriber's credit balance. Returns null when the session isn't an active Autopilot. */
 export async function getAccount(sessionId: string): Promise<Account | null> {
   const paid = await paidSession(sessionId);

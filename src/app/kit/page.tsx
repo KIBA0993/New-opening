@@ -68,6 +68,13 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       <Suspense fallback={null}>
         <BuyerMapGrid placeId={profile.placeId} industry={profile.industry} className="card mt-12 p-5 sm:p-7" />
       </Suspense>
+      <section className="card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <p className="font-semibold">Your account</p>
+          <p className="text-[0.92rem] text-ink-3">Sign in with the email you paid with to see your Kit, your Autopilot and your weekly emails in one place. No password.</p>
+        </div>
+        <Link href="/signin?next=/me" className="btn btn-ghost shrink-0">Open my account</Link>
+      </section>
     </div>
     </>
   );

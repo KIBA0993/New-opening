@@ -3,6 +3,7 @@ import { composeDigest, packSnapshot, unpackSnapshot } from "@/lib/digest";
 import { metadataToProfile, stripe } from "@/lib/billing";
 import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
+import { archiveEmail } from "@/lib/emailArchive";
 import { firstEmailJustSent, trialNotice } from "@/lib/welcome";
 import { cronAllowed, weekKey } from "@/lib/cron";
 import { alertOwner } from "@/lib/alert";
@@ -40,8 +41,10 @@ export async function GET(req: Request) {
         account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
         trial: trialNotice(sub, checkout?.id),
       });
-      const res = await sendEmail(to, `${digest.business}: your 5-minute week`, html);
+      const subject = `${digest.business}: your 5-minute week`;
+      const res = await sendEmail(to, subject, html);
       if (!res.ok) throw new Error("email not accepted");
+      await archiveEmail(sub.id, subject, html);
       await stripe().subscriptions.update(sub.id, { metadata: { snap: packSnapshot(next) } });
       sent++;
     } catch (e) {
