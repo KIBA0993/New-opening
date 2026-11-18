@@ -24,6 +24,8 @@ export async function startAdmin() {
     path: "/",
     maxAge: 7 * 86400,
   });
+  // Stop counting this browser in the traffic numbers (kept as long as browsers allow).
+  (await cookies()).set("md_me", "1", { httpOnly: true, secure: env.siteUrl.startsWith("https"), sameSite: "lax", path: "/", maxAge: 400 * 86400 });
 }
 
 export async function isAdmin() {
@@ -43,7 +45,7 @@ export interface Sales {
   all: { kits: number; autopilots: number; topups: number; revenue: number };
   activeSubs: number;
   mrr: number;
-  recent: { at: number; what: string; business: string; amount: number }[];
+  recent: { at: number; what: string; business: string; amount: number; source: string }[];
 }
 
 export async function sales(): Promise<Sales> {
@@ -63,7 +65,7 @@ export async function sales(): Promise<Sales> {
     out.all.revenue += amount;
     row.revenue += amount;
     if (out.recent.length < 10) {
-      out.recent.push({ at: s.created * 1000, what: product === "kit" ? "Launch Kit" : product === "credits" ? "Re-check top-up" : `Autopilot (${product})`, business: s.metadata?.name || "", amount });
+      out.recent.push({ at: s.created * 1000, what: product === "kit" ? "Launch Kit" : product === "credits" ? "Re-check top-up" : `Autopilot (${product})`, business: s.metadata?.name || "", amount, source: s.metadata?.src === "owner" ? "your own test" : (s.metadata?.src || "").split("|")[0] });
     }
   }
   for await (const sub of stripe().subscriptions.list({ status: "active", limit: 100 })) {
