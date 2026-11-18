@@ -18,7 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: g.title,
     description: g.description,
     alternates: { canonical: `/guides/${g.slug}` },
-    openGraph: { type: "article", title: g.title, description: g.description, modifiedTime: g.updated },
+    openGraph: { type: "article", title: g.title, description: g.description, modifiedTime: g.updated, url: `/guides/${g.slug}` },
+    twitter: { card: "summary_large_image", title: g.title, description: g.description },
   };
 }
 
@@ -26,7 +27,11 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const g = guideBySlug((await params).slug);
   if (!g) notFound();
   const industry = industryBySlug(g.industry);
-  const related = GUIDES_CONTENT.filter((x) => x.slug !== g.slug && (!x.industry || x.industry === g.industry)).slice(0, 3);
+  const picked = (g.related ?? []).map(guideBySlug).filter((x): x is NonNullable<typeof x> => !!x);
+  const related = [
+    ...picked,
+    ...GUIDES_CONTENT.filter((x) => x.slug !== g.slug && !picked.includes(x) && (!x.industry || x.industry === g.industry)),
+  ].slice(0, 4);
   const url = `${SITE_URL}/guides/${g.slug}`;
   const howTo = g.sections.find((s) => s.steps);
 
@@ -42,6 +47,9 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             dateModified: g.updated,
             datePublished: g.updated,
             mainEntityOfPage: url,
+            image: `${SITE_URL}/opengraph-image`,
+            about: g.keyword,
+            inLanguage: "en-US",
             author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
             publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
           },
@@ -109,6 +117,10 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           ))}
         </dl>
       </section>
+
+      <p className="mt-10 text-ink-3">
+        More straight answers: <Link className="link" href="/questions">questions new owners ask</Link>.
+      </p>
 
       {related.length ? (
         <nav aria-label="Related guides" className="mt-12">

@@ -183,7 +183,7 @@ export const BASE_FAQ = [
   },
   {
     q: "Do I need a website?",
-    a: "No. A complete Google profile does most of the work for a new local business. Your kit tells you when a simple site would help.",
+    a: "Not to get on Google Maps. A complete Google profile is enough to start. AI assistants do cite business websites more than any other source, so your kit includes ready-to-paste service pages for when you build a simple site.",
   },
 ];
 
