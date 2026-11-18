@@ -246,9 +246,22 @@ export function guessIndustry(types: string[] = [], primaryType?: string, name?:
 }
 
 /** The phrase customers would type, e.g. "nail salon". */
-export function searchTerm(industry: Industry, primaryTypeLabel?: string): string {
+export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?: { name?: string; types?: string[]; primaryType?: string }): string {
+  // Google files med spas under "Spa", but their customers search "med spa" and their rivals are other med spas.
+  const medical = place?.types?.some((t) => t === "medical_clinic" || t === "skin_care_clinic" || t === "medical_spa");
+  if (place && (/\bmed(ical)?\s?spa\b/i.test(place.name || "") || (medical && /spa|beauty|skin/.test(place.primaryType || "")))) return "med spa";
   if (primaryTypeLabel && primaryTypeLabel.length < 40) return primaryTypeLabel.toLowerCase();
+  // No label from Google: its type code still beats the industry default ("hair_salon" -> "hair salon").
+  const code = place?.primaryType;
+  if (code && !/^(point_of_interest|establishment|store|service|health)$/.test(code)) return code.replace(/_/g, " ");
   return industry.term;
+}
+
+/** "nail salon" -> "nail salons", "med spa" -> "med spas", "house cleaning service" -> "house cleaning services". */
+export function pluralTerm(term: string): string {
+  if (/(s|sh|ch|x|z)$/.test(term)) return term + "es";
+  if (/[^aeiou]y$/.test(term)) return term.slice(0, -1) + "ies";
+  return term + "s";
 }
 
 /**

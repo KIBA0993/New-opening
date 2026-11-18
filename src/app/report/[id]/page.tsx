@@ -8,7 +8,7 @@ import { TrackOnce } from "@/components/TrackOnce";
 import { DemoTag, Pill } from "@/components/ui";
 import type { Light } from "@/components/ui";
 import { env, PRICES } from "@/lib/env";
-import { guessIndustry, industryBySlug } from "@/lib/industries";
+import { guessIndustry, industryBySlug, pluralTerm } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
 import { getPlace } from "@/lib/providers/places";
 import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
@@ -279,7 +279,10 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   const report = await aiReport(place, industry);
   const s = aiSummary(report.answers, report.rivals);
   const prompts = [...new Set(report.answers.map((a) => a.prompt))];
-  const ind = industryBySlug(industry)!;
+  const term = checkContext(place, industry).term;
+  // When no rival was named anywhere, a column of zeros says nothing: show who the AI picked instead.
+  const anyRivalNamed = s.named > 0 || report.rivals.some((r) => r.aiMentions > 0);
+  const outsidePicks = s.picked.slice(0, 4);
   const listed = report.listings.filter((l) => l.state === "found").length;
   const gaps = citationGaps(report.listings, report.rivals);
   const counts = new Map<string, number>();
@@ -317,7 +320,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
                         </summary>
                         <p className="mt-2 text-[0.95rem] text-ink-3">{a.excerpt || "No businesses named."}</p>
                       </details>
-                      {a.rivalsMentioned.length ? <p className="mt-1 text-[0.92rem] text-ink-2">Named instead: {a.rivalsMentioned.join(", ")}</p> : null}
+                      {!a.mentionsYou && (a.picks?.length || a.rivalsMentioned.length) ? <p className="mt-1 text-[0.92rem] text-ink-2">{ENGINE_LABEL[a.engine]} picked: {(a.picks?.length ? a.picks : a.rivalsMentioned).join(", ")}</p> : null}
                       {a.sources?.length ? <p className="mt-1 text-[0.85rem] text-ink-3">Sources it read: {a.sources.slice(0, 5).join(", ")}</p> : null}
                     </li>
                   ))}
@@ -330,12 +333,17 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
 
       <section aria-labelledby="rivals" className="mt-12">
         <h2 id="rivals" className="font-display text-[1.7rem]">You vs. nearby rivals</h2>
-        <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {ind.term}s within a few miles. A listing marked &ldquo;?&rdquo; means we couldn&apos;t check it.</p>
+        <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {pluralTerm(term)} near you on Google Maps. A listing marked &ldquo;?&rdquo; means we couldn&apos;t check it.</p>
+        {!anyRivalNamed && outsidePicks.length ? (
+          <p className="mt-3 rounded-xl bg-paper-3 p-3 text-[0.95rem] text-ink-2">
+            <b>AI didn&apos;t name you or any of these.</b> It recommended {outsidePicks.map((p) => p.name).join(", ")} instead. Those are your real rivals in AI answers.
+          </p>
+        ) : null}
         <ShowFew few={3} label={`See all ${report.rivals.length} rivals`}>
-          <RivalRow name={`${place.name} (you)`} you rating={place.rating} reviews={place.reviewCount || 0} ai={s.named} total={s.total}
+          <RivalRow name={`${place.name} (you)`} you rating={place.rating} reviews={place.reviewCount || 0} ai={anyRivalNamed ? s.named : undefined} total={s.total}
             profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "unknown" ? null : l.state === "found" || l.state === "different"]))} />
           {report.rivals.map((r) => (
-            <RivalRow key={r.id} name={r.name} rating={r.rating} reviews={r.reviewCount || 0} ai={r.aiMentions} total={s.total} miles={r.distanceMiles} profiles={r.profiles || {}} />
+            <RivalRow key={r.id} name={r.name} rating={r.rating} reviews={r.reviewCount || 0} ai={anyRivalNamed ? r.aiMentions : undefined} total={s.total} miles={r.distanceMiles} profiles={r.profiles || {}} />
           ))}
         </ShowFew>
         <KitLine>Catch up to them with the Launch Kit</KitLine>
@@ -575,17 +583,17 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
 
 const PLATS: Platform[] = ["google", "apple", "bing", "yelp", "facebook"];
 
-function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean | null>> }) {
+function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai?: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean | null>> }) {
   return (
     <div className={`card p-4 ${you ? "border-ink outline outline-1 outline-ink" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-semibold">{name}</p>
         {miles != null ? <p className="text-[0.85rem] text-ink-3">{miles} mi away</p> : null}
       </div>
-      <dl className="mt-2 grid grid-cols-3 gap-2 text-[0.92rem]">
+      <dl className={`mt-2 grid gap-2 text-[0.92rem] ${ai == null ? "grid-cols-2" : "grid-cols-3"}`}>
         <div><dt className="text-ink-3">Rating</dt><dd className="font-semibold">{rating ? `★ ${rating}` : "None yet"}</dd></div>
         <div><dt className="text-ink-3">Reviews</dt><dd className="font-semibold">{reviews}</dd></div>
-        <div><dt className="text-ink-3">AI named</dt><dd className={`font-semibold ${ai === 0 ? "text-bad" : ""}`}>{ai} of {total}</dd></div>
+        {ai != null ? <div><dt className="text-ink-3">AI named</dt><dd className={`font-semibold ${ai === 0 ? "text-bad" : ""}`}>{ai} of {total}</dd></div> : null}
       </dl>
       <p className="mt-2 flex flex-wrap gap-1.5 text-[0.8rem]">
         {PLATS.map((p) => (

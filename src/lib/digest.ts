@@ -45,7 +45,7 @@ export async function composeDigest(profile: OwnerProfile, prev: Snapshot | null
   const place: Place =
     (profile.placeId !== "new" && (await getPlace(profile.placeId))) ||
     ({ id: "new", name: profile.name, address: profile.address, city: profile.city } as Place);
-  const term = searchTerm(industry, place.primaryTypeLabel);
+  const term = searchTerm(industry, place.primaryTypeLabel, place);
   const area = place.city || profile.city;
   const { rivals, demo: rivalsDemo } = await findRivals(place, profile.industry, `${term} near ${area}`);
 
