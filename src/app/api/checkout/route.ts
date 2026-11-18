@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { track } from "@vercel/analytics/server";
 import { z } from "zod";
+import { alertOwner, errText } from "@/lib/alert";
 import { allowIp } from "@/lib/guard";
 import { createCheckout } from "@/lib/billing";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     await track("checkout", { product: parsed.data.product, industry: parsed.data.profile.industry }).catch(() => undefined);
     return NextResponse.json({ url });
   } catch (e) {
-    console.error(e);
+    await alertOwner("checkout", "A customer couldn't start checkout", { product: parsed.data.product, business: parsed.data.profile.name, error: errText(e) });
     return NextResponse.json({ error: "Checkout isn't working right now. Please try again in a minute." }, { status: 502 });
   }
 }

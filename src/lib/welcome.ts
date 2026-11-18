@@ -2,6 +2,7 @@ import "server-only";
 import { metadataToProfile, stripe } from "./billing";
 import { composeDigest, packSnapshot } from "./digest";
 import { env } from "./env";
+import { alertOwner, errText } from "./alert";
 import { renderDigestHtml, sendEmail } from "./email";
 
 // The first Autopilot email goes out right after purchase. The thank-you page triggers it,
@@ -33,7 +34,7 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
     await stripe().subscriptions.update(subId, { metadata: { snap: packSnapshot(next), w1: `sent:${Date.now()}` } });
     return "sent";
   } catch (e) {
-    console.error("first email", subId, e);
+    await alertOwner("first-email", "A new Autopilot subscriber's first email failed", { subscription: subId, business: profile.name, error: errText(e) });
     await stripe().subscriptions.update(subId, { metadata: { w1: "" } }).catch(() => undefined);
     return "failed";
   }

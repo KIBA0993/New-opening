@@ -4,6 +4,7 @@ import { metadataToProfile, stripe } from "@/lib/billing";
 import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
 import { firstEmailJustSent } from "@/lib/welcome";
+import { alertOwner } from "@/lib/alert";
 
 export const maxDuration = 300;
 
@@ -38,5 +39,6 @@ export async function GET(req: Request) {
       failed.push(sub.id);
     }
   }
+  if (failed.length) await alertOwner("weekly", `${failed.length} weekly Autopilot emails failed`, { sent, failed: failed.join(", ") });
   return NextResponse.json({ sent, failed });
 }

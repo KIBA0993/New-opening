@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { BuyerMapGrid } from "@/components/MapGrid";
-import { paidSession, stripe } from "@/lib/billing";
-import { env, has } from "@/lib/env";
-import { renderKitEmail, sendEmail } from "@/lib/email";
+import { paidSession } from "@/lib/billing";
+import { has } from "@/lib/env";
+import { sendKitEmail } from "@/lib/fulfill";
 import { industryBySlug } from "@/lib/industries";
 import { writeKit } from "@/lib/kit";
 import { GUIDES } from "@/lib/platforms";
@@ -35,21 +36,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
   const industry = industryBySlug(profile.industry)!;
 
   // Email the kit link once, so the owner can always get back here.
-  if (has.stripe() && !session_id.startsWith("demo_")) {
-    try {
-      const s = await stripe().checkout.sessions.retrieve(session_id);
-      const pi = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id;
-      if (pi) {
-        const intent = await stripe().paymentIntents.retrieve(pi);
-        if (!intent.metadata.kit_emailed) {
-          if (profile.email) await sendEmail(profile.email, `Your Launch Kit for ${profile.name}`, renderKitEmail(profile.name, `${env.siteUrl}/kit?session_id=${session_id}`));
-          await stripe().paymentIntents.update(pi, { metadata: { kit_emailed: "1" } });
-        }
-      }
-    } catch (e) {
-      console.error("kit email", e);
-    }
-  }
+  if (has.stripe() && !session_id.startsWith("demo_")) after(() => sendKitEmail(session_id));
 
   return (
     <>

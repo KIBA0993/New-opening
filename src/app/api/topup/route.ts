@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { alertOwner, errText } from "@/lib/alert";
 import { allowIp } from "@/lib/guard";
 import { createTopup, getAccount } from "@/lib/credits";
 
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   try {
     return NextResponse.json({ url: await createTopup(parsed.data.session_id, account) });
   } catch (e) {
-    console.error("topup", e);
+    await alertOwner("topup", "A subscriber couldn't start a re-check top-up", { business: account.profile.name, error: errText(e) });
     return NextResponse.json({ error: "Checkout isn't working right now. Please try again in a minute." }, { status: 502 });
   }
 }
