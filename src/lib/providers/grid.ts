@@ -5,7 +5,7 @@ import { seeded } from "../mock";
 import type { Place } from "../types";
 
 // Map grid rank check: where the shop shows up in Google Maps from spots around it.
-// The free check uses 3x3 (9 lookups, cached a day); Kit and Autopilot buyers get 5x5 (25, refreshed weekly).
+// The free check uses 3x3 (9 lookups, cached 3 days); Kit and Autopilot buyers get 5x5 (25, refreshed weekly).
 // Docs: https://docs.dataforseo.com/v3/serp/google/maps/live/advanced/
 export const FREE_GRID = 3;
 export const FULL_GRID = 5;
@@ -93,14 +93,14 @@ async function liveGrid(place: Place, keyword: string, size: number): Promise<Gr
   return summarize(keyword, size, cells, false);
 }
 
-// Free 3x3: refreshed daily. Buyers' 5x5: refreshed weekly (their weekly re-check).
+// Free 3x3: refreshed every 3 days. Buyers' 5x5: refreshed weekly (their weekly re-check).
 const dailyGrid = unstable_cache(
   async (key: string, place: Place, keyword: string, size: number) => {
     void key;
     return liveGrid(place, keyword, size);
   },
   ["grid-v2-daily"],
-  { revalidate: 60 * 60 * 24 },
+  { revalidate: 60 * 60 * 24 * 3 },
 );
 const weeklyGrid = unstable_cache(
   async (key: string, place: Place, keyword: string, size: number) => {

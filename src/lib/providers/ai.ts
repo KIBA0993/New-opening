@@ -112,6 +112,13 @@ export const cachedAsk = unstable_cache(
   { revalidate: 60 * 60 * 24 },
 );
 
+/** The free check keeps answers 3 days (they change slowly). The weekly digest uses the 1-day cache above. */
+export const cachedAskFree = unstable_cache(
+  async (engine: Engine, prompt: string, city?: string) => askEngine(engine, prompt, city),
+  ["ask-free-v1"],
+  { revalidate: 60 * 60 * 24 * 3 },
+);
+
 /** Write structured content (profiles, emails). Claude first, then OpenAI. Returns null when no writer is configured. */
 export async function writeJSON<S extends z.ZodType>(system: string, user: string, schema: S): Promise<z.infer<S> | null> {
   try {

@@ -4,7 +4,7 @@ import { cache } from "react";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
-import { askEngine, cachedAsk, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
+import { askEngine, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
 import { directoriesSafe, type DirectoryHit } from "./providers/listings";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
@@ -85,7 +85,7 @@ async function runAnswers(placeName: string, rivalNames: string[], prompts: stri
   const { engines, demo } = checkEngines();
   if (demo) return { answers: mockAnswers(placeName, rivalNames, prompts, engines, fresh), demo: true };
   const perEngine = Math.max(1, Math.ceil(FREE_QUESTIONS / engines.length));
-  const ask = fresh ? askEngine : cachedAsk;
+  const ask = fresh ? askEngine : cachedAskFree;
   const jobs = engines.flatMap((engine) => prompts.slice(0, perEngine).map((prompt) => ({ engine, prompt })));
   const answers = await Promise.all(
     jobs.map(async ({ engine, prompt }): Promise<EngineAnswer | null> => {
@@ -120,7 +120,7 @@ function mockAnswers(placeName: string, rivalNames: string[], prompts: string[],
   });
 }
 
-// ---------- 3) Listings everywhere else (per business, cached a day) ----------
+// ---------- 3) Listings everywhere else (per business, cached a week) ----------
 
 interface ScanResult {
   [k: string]: { found: boolean | null; url?: string; phone?: string; address?: string; note?: string } | undefined;
@@ -235,13 +235,13 @@ const cachedListings = unstable_cache(
     return { listings: scan.listings, demo: scan.demo, profiles };
   },
   ["listings-v2"],
-  { revalidate: 60 * 60 * 24 },
+  { revalidate: 60 * 60 * 24 * 7 },
 );
 
 // Keyed by ids only, so small changes in Google's data (a new review) don't trigger new paid searches.
 const cachedDirectoryListings = (place: Place, isNew: boolean, rivals: Place[], area: string) =>
   unstable_cache(() => directoryListings(place, isNew, rivals, area), ["listings-dfs-v1", place.id, place.name, rivals.map((r) => r.id).join(",")], {
-    revalidate: 60 * 60 * 24,
+    revalidate: 60 * 60 * 24 * 7, // listings change slowly: a week
   })();
 
 /** Full AI section. Wrapped in cache() so the score card and the details share one run per request. */
