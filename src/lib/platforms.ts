@@ -72,7 +72,7 @@ export const GUIDES: PlatformGuide[] = [
     platform: "bing",
     name: "Bing Places",
     why: "Bing powers Copilot and is one of the sources ChatGPT searches. It can copy your Google profile in one step.",
-    url: "https://www.bingplaces.com",
+    url: "https://www.bing.com/forbusiness",
     minutes: 5,
     steps: [
       "Sign in and choose 'Import from Google Business Profile'. It copies your name, address, hours, photos and categories in one go. Or add it manually.",
