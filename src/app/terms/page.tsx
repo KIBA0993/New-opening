@@ -6,7 +6,7 @@ export default function Terms() {
       <h1 className="font-display text-[2.4rem]">Terms</h1>
       <p>Last updated November 17, 2026.</p>
       <h2>What you're buying</h2>
-      <p>Opening Day is self-serve software. The Launch Kit is written content and step-by-step guides you use to set up your own profiles. The Weekly Autopilot is an automated weekly email. We don't create, edit or manage profiles on your behalf.</p>
+      <p>MapDebut is self-serve software. The Launch Kit is written content and step-by-step guides you use to set up your own profiles. The Weekly Autopilot is an automated weekly email. We don't create, edit or manage profiles on your behalf.</p>
       <h2>No guarantees on rankings</h2>
       <p>Google, Apple, Yelp, Bing, Facebook and OpenAI decide who they show and recommend. We can't guarantee placement, verification or recommendations.</p>
       <h2>Subscriptions</h2>

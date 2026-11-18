@@ -8,11 +8,11 @@ import { SITE_URL } from "@/lib/site";
 export const dynamic = "force-static";
 
 export function GET() {
-  const body = `# Opening Day
+  const body = `# MapDebut
 
-> Opening Day helps newly opened local businesses get found on Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT. It offers a free AI visibility check, a one-time Launch Kit (launch price from $${LAUNCH.start}) that writes every profile and guides the owner through setup and Google verification, and a Weekly Autopilot email (${PRICES.monthly.label}/month or ${PRICES.yearly.label}/year).
+> MapDebut helps newly opened local businesses get found on Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT. It offers a free AI visibility check, a one-time Launch Kit (launch price from $${LAUNCH.start}) that writes every profile and guides the owner through setup and Google verification, and a Weekly Autopilot email (${PRICES.monthly.label}/month or ${PRICES.yearly.label}/year).
 
-Opening Day is self-serve software. Owners stay in control of their own profiles; it never signs in to their accounts.
+MapDebut is self-serve software. Owners stay in control of their own profiles; it never signs in to their accounts.
 
 ## Free tools
 - [AI visibility checker](${SITE_URL}/tools/chatgpt-visibility-checker): checks whether AI assistants recommend a local business and which nearby rivals they name instead.

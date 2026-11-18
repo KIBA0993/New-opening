@@ -1,4 +1,4 @@
-# Opening Day
+# MapDebut
 
 Get a new local business found on Google, Maps and ChatGPT. Built for the Ship or Die hackathon (from scratch, Nov 17, 2026).
 

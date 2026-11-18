@@ -31,9 +31,9 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 const wrap = (inner: string) => `<!doctype html><html><body style="margin:0;background:#F4EFE6;font-family:Georgia,'Times New Roman',serif;color:#1C1A16">
 <div style="max-width:560px;margin:0 auto;padding:28px 20px">
-<div style="font:600 13px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#B4441A">Opening Day</div>
+<div style="font:600 13px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#B4441A">MapDebut</div>
 ${inner}
-<p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459;margin-top:32px">You're getting this because you signed up at Opening Day. <a href="${env.siteUrl}/account" style="color:#6B6459">Manage or cancel</a>.</p>
+<p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459;margin-top:32px">You're getting this because you signed up at MapDebut. <a href="${env.siteUrl}/account" style="color:#6B6459">Manage or cancel</a>.</p>
 </div></body></html>`;
 
 const h2 = (t: string) => `<h2 style="font:600 20px/1.3 Georgia,serif;margin:28px 0 8px">${esc(t)}</h2>`;
