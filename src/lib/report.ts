@@ -5,6 +5,7 @@ import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
 import { askEngine, cachedAsk, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
+import { directoriesSafe, type DirectoryHit } from "./providers/listings";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
@@ -192,6 +193,41 @@ Return JSON: {"<exact business name>": {"yelp": true|false|null, "apple": true|f
   );
 }
 
+// ---------- 3b) Listings through DataForSEO (when connected) ----------
+// One Google search per business reads Google's own business panel, which lists the Facebook page,
+// and the results, which sometimes show the Yelp page. Yelp hides most pages from search engines
+// (Claude's web search finds them no better), so a Yelp page we can't see reads "can't tell", not "no".
+// Apple Maps and Bing Places can't be seen from web search at all, so the owner gets a 30-second
+// "check it yourself" instead of a guess. Cost: about $0.002 per business, no AI calls.
+
+const CHECK_YOURSELF: ListingCheck[] = [
+  { platform: "apple", state: "unknown", note: "Apple Maps listings don't show up in web searches. Search your name in Apple Maps on an iPhone to check." },
+  { platform: "bing", state: "unknown", note: "Search your name at bing.com/maps to check. Bing feeds ChatGPT's search, so it's worth a look." },
+];
+
+async function directoryListings(place: Place, isNew: boolean, rivals: Place[], area: string) {
+  const all = [place, ...rivals];
+  const hits: DirectoryHit[] = await Promise.all(all.map((b) => directoriesSafe(b.name, b.address || area, b === place && isNew ? undefined : b.id)));
+  const [mine, ...theirs] = hits;
+
+  const listings: ListingCheck[] = [
+    isNew ? { platform: "google", state: "missing", note: "Not on Google yet. This is step one." } : { platform: "google", state: "found", note: "Found on Google Maps.", url: place.mapsUrl },
+    mine.yelp
+      ? { platform: "yelp", state: "found", note: "Found your Yelp page." }
+      : { platform: "yelp", state: "unknown", note: "We couldn't confirm a Yelp page. Search Yelp for your name to check. AI tools quote Yelp more than any other directory." },
+    ...CHECK_YOURSELF,
+    mine.facebook
+      ? { platform: "facebook", state: "found", note: "Found your Facebook page on your Google profile." }
+      : mine.facebook === false
+        ? { platform: "facebook", state: "missing", note: "Your Google profile doesn't show a Facebook page. If you have one, add its link to your profile." }
+        : { platform: "facebook", state: "unknown", note: "We couldn't confirm a Facebook page. Worth a quick look." },
+    { platform: "chatgpt", state: "unknown", note: "ChatGPT's new business profiles can't be checked from outside yet. Claim yours to be safe." },
+  ];
+  // Apple and Bing stay null ("couldn't check") for rivals too.
+  const profiles = Object.fromEntries(rivals.map((r, i) => [r.name, { google: true, yelp: theirs[i].yelp, apple: null, bing: null, facebook: theirs[i].facebook }]));
+  return { listings, demo: false, profiles };
+}
+
 const cachedListings = unstable_cache(
   async (placeKey: string, place: Place, isNew: boolean, rivals: Place[], area: string) => {
     void placeKey;
@@ -202,6 +238,12 @@ const cachedListings = unstable_cache(
   { revalidate: 60 * 60 * 24 },
 );
 
+// Keyed by ids only, so small changes in Google's data (a new review) don't trigger new paid searches.
+const cachedDirectoryListings = (place: Place, isNew: boolean, rivals: Place[], area: string) =>
+  unstable_cache(() => directoryListings(place, isNew, rivals, area), ["listings-dfs-v1", place.id, place.name, rivals.map((r) => r.id).join(",")], {
+    revalidate: 60 * 60 * 24,
+  })();
+
 /** Full AI section. Wrapped in cache() so the score card and the details share one run per request. */
 export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) => {
   const { industry, term, area, isNew } = checkContext(place, industrySlug);
@@ -209,7 +251,9 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   const prompts = buildPrompts(industry, term, area);
   const [ans, lst] = await Promise.all([
     runAnswers(place.name, rivalPlaces.map((r) => r.name), prompts, area),
-    cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area),
+    has.dataforseo() && !place.id.startsWith("demo_")
+      ? cachedDirectoryListings(place, isNew, rivalPlaces, area)
+      : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area),
   ]);
   const rivals: Rival[] = rivalPlaces.map((r) => ({
     ...r,

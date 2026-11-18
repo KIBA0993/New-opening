@@ -35,6 +35,7 @@ export const env = {
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN || "",
   aiDailyCap: Number(process.env.AI_DAILY_CALL_CAP || 1500),
   placesDailyCap: Number(process.env.PLACES_DAILY_CALL_CAP || 4000),
+  dataforseoDailyCap: Number(process.env.DATAFORSEO_DAILY_CALL_CAP || 3000), // listing searches, $0.002 each
   freeChecksPerDay: Number(process.env.FREE_CHECKS_PER_DAY || 5),
 };
 
