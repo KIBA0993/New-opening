@@ -16,7 +16,7 @@ import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { MapGrid } from "@/components/MapGrid";
-import { aiReport, aiSummary, checkContext, citationGaps, findFixes, getRivals, PLATFORM_LABEL, signals, visibility } from "@/lib/report";
+import { aiReport, aiSummary, checkContext, citationGaps, findFixes, PLATFORM_LABEL, readiness, visibility } from "@/lib/report";
 import { cache } from "react";
 import { EmailReport, ShowFew, StickyKitBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
@@ -173,8 +173,7 @@ async function VisibilityHero({ place, industry }: { place: Place; industry: Ind
 
 /** Instant: Google profile signals vs. nearby rivals. No AI calls. */
 async function SignalsSection({ place, industry }: { place: Place; industry: IndustrySlug }) {
-  const { rivals, demo } = await getRivals(place, industry);
-  const { items, score } = signals(place, rivals);
+  const { items, score, demo } = await readiness(place, industry);
   const overall: Light = score >= 80 ? "green" : score >= 55 ? "yellow" : "red";
   return (
     <section aria-labelledby="score" className="card mt-12 p-5 sm:p-7">
@@ -313,8 +312,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
 
 /** Shared per request: the fixes the check found, and whether the business is already in good shape. */
 const standing = cache(async (place: Place, industry: IndustrySlug) => {
-  const [report, { rivals }] = await Promise.all([aiReport(place, industry), getRivals(place, industry)]);
-  const sig = signals(place, rivals);
+  const [report, sig] = await Promise.all([aiReport(place, industry), readiness(place, industry)]);
   const fixes = findFixes(place, report, sig.items);
   const { pct } = visibility(report.answers);
   // In good shape: AI names them most of the time and Google basics are solid. Then the Autopilot leads.

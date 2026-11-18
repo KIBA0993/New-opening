@@ -6,6 +6,8 @@ import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
 import { askEngine, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
 import { directoriesSafe, type DirectoryHit } from "./providers/listings";
+import { nearbyPhotos, profileFacts, websiteMatches, type ProfileFacts } from "./providers/profile";
+import { reviewFreshness, type ReviewFreshness } from "./providers/places";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
@@ -46,38 +48,102 @@ export interface Signal {
   note: string;
 }
 
-export function signals(place: Place, rivals: Place[]): { items: Signal[]; score: number } {
+/** Extra facts the graded score uses when we have them. Any can be missing; missing ones don't count against you. */
+export interface ReadinessExtras {
+  profile?: ProfileFacts | null;
+  fresh?: ReviewFreshness | null;
+  rivalPhotos?: number[]; // total photos of nearby rivals
+  site?: { phone: boolean | null; name: boolean | null } | null;
+}
+
+const median = (a: number[]) => {
+  const s = [...a].sort((x, y) => x - y);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+};
+const upper = (a: number[]) => {
+  const s = [...a].sort((x, y) => x - y);
+  return s.length ? s[Math.min(s.length - 1, Math.floor(s.length * 0.75))] : 0;
+};
+const clamp = (x: number) => Math.max(0, Math.min(1, x));
+
+/**
+ * Graded AI readiness score. Each signal earns 0 to 1 point times its weight, so "has photos"
+ * isn't enough: you need about as many as your strongest rivals, recent reviews, a written
+ * description and details that match everywhere. A strong, established business typically
+ * lands around 70 to 85.
+ */
+export function signals(place: Place, rivals: Place[], x: ReadinessExtras = {}): { items: Signal[]; score: number } {
   const isNew = place.id === "new";
   const reviews = place.reviewCount || 0;
-  const rivalCounts = rivals.map((r) => r.reviewCount || 0).sort((a, b) => a - b);
-  const median = rivalCounts.length ? rivalCounts[Math.floor(rivalCounts.length / 2)] : 0;
-  const items: Signal[] = [
-    isNew
-      ? { label: "On Google Maps", light: "red", note: "Not on Google yet. Every AI tool checks Google first." }
-      : { label: "On Google Maps", light: "green", note: "Your profile is live." },
-    {
-      label: "Clear business category",
-      light: isNew ? "red" : place.primaryType ? "green" : "yellow",
-      note: place.primaryTypeLabel ? `Listed as "${place.primaryTypeLabel}".` : "AI tools match you to searches by category. Pick the most specific one.",
-    },
-    { label: "Opening hours", light: place.hasHours ? "green" : "red", note: place.hasHours ? "Hours are listed." : "No hours listed. AI tools skip businesses that might be closed." },
-    { label: "Phone number", light: place.phone ? "green" : "red", note: place.phone ? "Listed." : "Add a local phone number." },
-    { label: "Website", light: place.website ? "green" : "yellow", note: place.website ? "Listed." : "Not required, but AI tools trust businesses with a site." },
-    { label: "Photos", light: place.photoName ? "green" : "yellow", note: place.photoName ? "You have photos." : "Add at least 5 photos of your work or space." },
-    {
-      label: "Reviews vs. nearby rivals",
-      light: reviews >= median ? "green" : reviews >= median / 3 ? "yellow" : "red",
-      note: `You have ${reviews}. Your typical rival has ${median}.`,
-    },
-    {
-      label: "Rating",
-      light: !place.rating ? "yellow" : place.rating >= 4.5 ? "green" : place.rating >= 4 ? "yellow" : "red",
-      note: place.rating ? `${place.rating} stars.` : "No rating yet. Your first 10 reviews matter most.",
-    },
-  ];
-  const points = items.reduce((n, s) => n + (s.light === "green" ? 1 : s.light === "yellow" ? 0.5 : 0), 0);
-  return { items, score: Math.round((points / items.length) * 100) };
+  const rivalReviews = rivals.map((r) => r.reviewCount || 0);
+  const rows: { label: string; weight: number; points: number | null; note: string }[] = [];
+  const add = (label: string, weight: number, points: number | null, note: string) => rows.push({ label, weight, points: points == null ? null : clamp(points), note });
+
+  add("On Google Maps", 2, isNew ? 0 : 1, isNew ? "Not on Google yet. Every AI tool checks Google first." : "Your profile is live.");
+  if (x.profile?.claimed != null || isNew) {
+    add("Profile claimed by you", 2, x.profile?.claimed ? 1 : 0, x.profile?.claimed ? "You manage this profile." : "Unclaimed. Anyone can suggest edits, and Google trusts it less. Claim and verify it.");
+  }
+  const extra = x.profile?.extraCategories;
+  add(
+    "Categories",
+    1,
+    isNew ? 0 : !place.primaryType ? 0.4 : extra == null ? 0.8 : extra >= 2 ? 1 : extra === 1 ? 0.8 : 0.6,
+    place.primaryTypeLabel
+      ? `Main category "${place.primaryTypeLabel}"${extra != null ? `, plus ${extra} more` : ""}.${extra != null && extra < 2 ? " Add 2 to 4 extra categories for the other things you do." : ""}`
+      : "AI tools match you to searches by category. Pick the most specific one.",
+  );
+  if ((x.profile && x.profile.description !== undefined) || isNew) {
+    const len = x.profile?.description?.length || 0;
+    add("Business description", 1.5, len >= 500 ? 1 : len >= 250 ? 0.7 : len > 0 ? 0.4 : 0,
+      len >= 500 ? "A full description AI tools can quote." : len > 0 ? `Only ${len} characters. Use most of the 750 Google allows: services, area, what makes you different.` : "No description. AI assistants quote it when they recommend you. Write one.");
+  }
+  add("Opening hours", 1, place.hasHours ? 1 : 0, place.hasHours ? "Hours are listed." : "No hours listed. AI tools skip businesses that might be closed.");
+  add("Phone number", 0.5, place.phone ? 1 : 0, place.phone ? "Listed." : "Add a local phone number.");
+  add("Website", 1, place.website ? 1 : 0.3, place.website ? "Listed." : "No website. AI tools trust businesses they can confirm on their own site.");
+  if (x.site && (x.site.phone != null || x.site.name != null)) {
+    const ok = x.site.phone !== false && x.site.name !== false;
+    add("Website matches Google", 1, ok ? 1 : x.site.phone === false ? 0.2 : 0.6,
+      ok ? "Your site shows the same phone number as Google." : x.site.phone === false ? "Your website doesn't show the phone number Google has. Mismatched details make AI tools unsure." : "Your website doesn't clearly show your business name.");
+  }
+  const photos = x.profile?.totalPhotos;
+  if (photos != null) {
+    const bar = Math.max(30, upper(x.rivalPhotos || []));
+    add("Photos vs. nearby rivals", 1.5, photos / bar, `You have ${photos}. ${x.rivalPhotos?.length ? `Your strongest rivals have about ${upper(x.rivalPhotos)}.` : ""} Aim for ${bar}+, added a few at a time.`.replace("  ", " "));
+  } else {
+    add("Photos", 1, place.photoName ? 0.6 : 0, place.photoName ? "You have some photos. Rivals with more photos get picked more." : "Add at least 10 photos of your work or space.");
+  }
+  {
+    const bar = Math.max(15, upper(rivalReviews));
+    add("Reviews vs. nearby rivals", 2, reviews / bar, `You have ${reviews}. Your typical rival has ${median(rivalReviews)}, and the strongest have about ${upper(rivalReviews)}.`);
+  }
+  if (x.fresh || isNew) {
+    const d = x.fresh?.newestDays;
+    add("Recent reviews", 1.5, d == null ? 0 : d <= 14 ? 1 : d <= 30 ? 0.8 : d <= 90 ? 0.4 : 0.1,
+      d == null ? "No reviews yet. Ask your first 10 customers this week." : d <= 30 ? `Newest review ${d} days ago. Keep a few coming every month.` : `Your newest review is ${d} days old. AI tools favor businesses with fresh reviews.`);
+  }
+  {
+    const r = place.rating;
+    add("Rating", 1, !r ? 0 : r >= 4.7 ? 1 : r >= 4.5 ? 0.85 : r >= 4.2 ? 0.6 : r >= 4 ? 0.4 : 0.1, r ? `${r} stars.` : "No rating yet. Your first 10 reviews matter most.");
+  }
+
+  const counted = rows.filter((r) => r.points != null);
+  const total = counted.reduce((n, r) => n + r.weight, 0);
+  const got = counted.reduce((n, r) => n + r.weight * (r.points as number), 0);
+  const items: Signal[] = counted.map((r) => ({ label: r.label, note: r.note, light: (r.points as number) >= 0.85 ? "green" : (r.points as number) >= 0.5 ? "yellow" : "red" }));
+  return { items, score: Math.round((got / (total || 1)) * 100) };
 }
+
+/** The graded score with every extra fact we can get. Shared per request. */
+export const readiness = cache(async (place: Place, industrySlug: IndustrySlug) => {
+  const { term } = checkContext(place, industrySlug);
+  const { rivals, demo } = await getRivals(place, industrySlug);
+  const [profile, fresh, nearby, site] = await Promise.all([profileFacts(place), reviewFreshness(place.id), nearbyPhotos(place, term), websiteMatches(place)]);
+  const rivalPhotos = nearby ? rivals.map((r) => nearby[r.id]?.photos).filter((n): n is number => typeof n === "number") : [];
+  // If the profile lookup failed, the Maps search still has photos and claimed status (but no description).
+  const mine = nearby?.[place.id];
+  const facts: ProfileFacts | null = profile ?? (mine ? { description: undefined, totalPhotos: mine.photos, claimed: mine.claimed, extraCategories: null } : null);
+  return { ...signals(place, rivals, { profile: facts, fresh, rivalPhotos, site }), demo };
+});
 
 // ---------- 2) Real AI answers, cached by question ----------
 
@@ -341,6 +407,21 @@ export interface Fix {
  * Everything the check found that the Launch Kit fixes, most important first.
  * Built only from this report's own results (listings, AI answers, Google signals).
  */
+const FIX_TITLE: Record<string, string> = {
+  "Profile claimed by you": "Claim and verify your Google profile",
+  Categories: "Add the right extra categories",
+  "Business description": "Write a full Google description",
+  "Opening hours": "Add your opening hours",
+  "Phone number": "Add your phone number",
+  Website: "Add a website, even a one-page one",
+  "Website matches Google": "Make your website match Google",
+  "Photos vs. nearby rivals": "Add photos to catch up with rivals",
+  Photos: "Add photos of your work and space",
+  "Reviews vs. nearby rivals": "Get more reviews than your rivals",
+  "Recent reviews": "Get fresh reviews this month",
+  Rating: "Lift your rating with reviews from happy customers",
+};
+
 export function findFixes(place: Place, report: { answers: EngineAnswer[]; listings: ListingCheck[]; rivals: Rival[] }, sig: Signal[]): Fix[] {
   const fixes: Fix[] = [];
   const google = report.listings.find((l) => l.platform === "google");
@@ -367,8 +448,12 @@ export function findFixes(place: Place, report: { answers: EngineAnswer[]; listi
       fixes.push({ title: `Fix the wrong details on ${PLATFORM_LABEL[l.platform]}`, why: l.note });
     }
   }
-  for (const s of sig) {
-    if (s.light === "red") fixes.push({ title: `Fix: ${s.label.toLowerCase()}`, why: s.note });
+  // Red signals first, then amber ones, each as a concrete step.
+  for (const light of ["red", "yellow"] as const) {
+    for (const s of sig) {
+      const title = FIX_TITLE[s.label];
+      if (s.light === light && title) fixes.push({ title, why: s.note });
+    }
   }
   if (report.listings.some((l) => l.platform === "chatgpt" && l.state !== "found")) {
     fixes.push({ title: "Claim your ChatGPT business profile", why: "New in 2026. It controls what ChatGPT shows about you." });

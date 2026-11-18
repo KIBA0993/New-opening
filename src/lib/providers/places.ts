@@ -300,3 +300,28 @@ export async function latestReviews(placeId: string): Promise<{ author: string; 
       when: r.relativePublishTimeDescription || "",
     }));
 }
+
+/** How recent the newest reviews Google shows are. Held 30 minutes like other place details. */
+export interface ReviewFreshness {
+  newestDays: number | null; // age of the newest review Google shows, in days
+  last30: number; // of the reviews Google shows (up to 5), how many are from the last 30 days
+}
+
+export function reviewFreshness(placeId: string): Promise<ReviewFreshness | null> {
+  if (!has.places() || placeId.startsWith("demo_") || placeId === "new") return Promise.resolve(null);
+  return unstable_cache(
+    async () => {
+      await spend("places");
+      const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
+        headers: { "X-Goog-Api-Key": env.googlePlaces, "X-Goog-FieldMask": "reviews.publishTime" },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`reviews ${res.status}`);
+      const data = (await res.json()) as { reviews?: { publishTime?: string }[] };
+      const ages = (data.reviews || []).map((r) => (r.publishTime ? (Date.now() - new Date(r.publishTime).getTime()) / 864e5 : Infinity)).filter(Number.isFinite);
+      return { newestDays: ages.length ? Math.floor(Math.min(...ages)) : null, last30: ages.filter((a) => a <= 30).length };
+    },
+    ["review-fresh-v1", placeId],
+    { revalidate: HOLD },
+  )().catch(() => null);
+}
