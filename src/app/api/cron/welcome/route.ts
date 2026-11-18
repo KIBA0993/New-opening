@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { cronAllowed } from "@/lib/cron";
 import { alertOwner } from "@/lib/alert";
 import { stripe } from "@/lib/billing";
-import { env, has } from "@/lib/env";
+import { has } from "@/lib/env";
 import { sendKitEmail } from "@/lib/fulfill";
 import { sendFirstEmail } from "@/lib/welcome";
 
@@ -13,9 +14,7 @@ export const maxDuration = 300;
 const GRACE_SEC = 15 * 60; // give the webhook and thank-you pages time first
 
 export async function GET(req: Request) {
-  if (env.cronSecret && req.headers.get("authorization") !== `Bearer ${env.cronSecret}`) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
+  if (!cronAllowed(req)) return new NextResponse("Unauthorized", { status: 401 });
   if (!has.stripe()) return NextResponse.json({ sent: 0 });
   const now = Math.floor(Date.now() / 1000);
   const since = now - 3 * 86400;

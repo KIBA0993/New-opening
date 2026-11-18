@@ -103,5 +103,5 @@ ${trialBlock}`);
 export function renderReportEmail(name: string, reportUrl: string, headline: string) {
   return wrap(`<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">Your free check for ${esc(name)}</h1>
 ${p(esc(headline))}
-${p(`<a href="${reportUrl}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">See the full results</a>`)}`);
+${p(`<a href="${esc(reportUrl)}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">See the full results</a>`)}`);
 }

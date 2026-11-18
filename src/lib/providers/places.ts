@@ -254,7 +254,11 @@ async function fetchRivals(place: Place, industry: IndustrySlug, term: string): 
       "places:searchText",
       { textQuery: term, pageSize: 20, locationBias: { circle: { center, radius: 4800 } } },
       fields,
-    );
+    ).catch((e) => {
+      // Keep the nearby results we already have; with none, let the caller handle it.
+      if (found.length) return { places: [] as GPlace[] };
+      throw e;
+    });
     found = [...found, ...(data.places || [])];
   }
   const seen = new Set<string>([place.id]);

@@ -15,6 +15,7 @@ import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
 import { isAdmin } from "@/lib/admin";
 import { HumanCheck } from "./HumanCheck";
+import { SectionBoundary } from "@/components/SectionBoundary";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote, type KitPrice } from "@/lib/pricing";
 import { DEAL, dealOn } from "@/lib/deal";
@@ -98,26 +99,36 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
           <Suspense fallback={<QuickOfferView place={place} industry={industry} kit={null} />}>
             <QuickOffer place={place} industry={industry} />
           </Suspense>
-          <Suspense fallback={<AISkeleton engines={engineNames()} />}>
-            <VisibilityHero place={place} industry={industry} />
-            <TopFixes place={place} industry={industry} />
-            <AISection place={place} industry={industry} />
-          </Suspense>
-          <Suspense fallback={<div className="skeleton mt-12 h-64" />}>
-            <EngineBars place={place} industry={industry} />
-          </Suspense>
-          <Suspense fallback={<SignalsSkeleton />}>
-            <SignalsSection place={place} industry={industry} />
-          </Suspense>
-          {place.id !== "new" ? (
-            <Suspense fallback={<div className="skeleton mt-12 h-72" />}>
-              <MapGrid place={place} keyword={checkContext(place, industry).term} />
-              <KitLine>The Launch Kit sets up what moves you up on Maps</KitLine>
+          <SectionBoundary>
+            <Suspense fallback={<AISkeleton engines={engineNames()} />}>
+              <VisibilityHero place={place} industry={industry} />
+              <TopFixes place={place} industry={industry} />
+              <AISection place={place} industry={industry} />
             </Suspense>
+          </SectionBoundary>
+          <SectionBoundary>
+            <Suspense fallback={<div className="skeleton mt-12 h-64" />}>
+              <EngineBars place={place} industry={industry} />
+            </Suspense>
+          </SectionBoundary>
+          <SectionBoundary>
+            <Suspense fallback={<SignalsSkeleton />}>
+              <SignalsSection place={place} industry={industry} />
+            </Suspense>
+          </SectionBoundary>
+          {place.id !== "new" ? (
+            <SectionBoundary>
+              <Suspense fallback={<div className="skeleton mt-12 h-72" />}>
+                <MapGrid place={place} keyword={checkContext(place, industry).term} />
+                <KitLine>The Launch Kit sets up what moves you up on Maps</KitLine>
+              </Suspense>
+            </SectionBoundary>
           ) : null}
-          <Suspense fallback={null}>
-            <Unlock place={place} industry={industry} sharePath={path} />
-          </Suspense>
+          <SectionBoundary>
+            <Suspense fallback={null}>
+              <Unlock place={place} industry={industry} sharePath={path} />
+            </Suspense>
+          </SectionBoundary>
         </>
       ) : (
         <div className="card mt-8 p-6">
