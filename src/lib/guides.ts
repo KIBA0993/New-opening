@@ -50,7 +50,7 @@ export const GUIDES_CONTENT: Guide[] = [
         h: "My business isn't in Business Hub. What now?",
         p: [
           "At launch, only existing US listings could be claimed, and new local profiles went to a waitlist. ChatGPT builds listings from sources across the web, so the fastest way to appear is to be complete and consistent on Google, Bing, Apple Maps and Yelp first.",
-          "Bing matters most here, because ChatGPT's search draws on it. Bing Places can import your Google profile in one step.",
+          "Yelp and Bing matter most here. ChatGPT uses licensed data from Yelp and TripAdvisor plus several search providers, Bing among them. Bing Places can import your Google profile in one step.",
         ],
       },
       {
@@ -135,7 +135,7 @@ export const GUIDES_CONTENT: Guide[] = [
       {
         h: "Where AI tools get local answers",
         p: [
-          "ChatGPT draws on web search (largely Bing), Gemini uses Google, and Perplexity searches the open web. All three lean on directories and review sites. One large study found Yelp quoted far more often than any other directory, and Google's own pages were the most cited source overall.",
+          "ChatGPT draws on several search providers (Bing among them) plus licensed data from Yelp and TripAdvisor, Gemini uses Google, and Perplexity searches the open web. All three lean on directories and review sites. One large study found Yelp quoted far more often than any other directory, and Google's own pages were the most cited source overall.",
         ],
       },
       {
@@ -356,7 +356,7 @@ export const GUIDES_CONTENT: Guide[] = [
         h: "Step by step",
         steps: [
           "Go to business.google.com and add your business with the exact name on your sign and paperwork.",
-          "Pick the most specific primary category, like 'Mobile pet groomer' rather than 'Pet store'.",
+          "Pick the most specific primary category, like 'Pet groomer' rather than 'Pet store'.",
           "Enter your address, or choose the service-area option if customers don't come to you.",
           "Open 'Edit profile', then 'About' or 'Business information', and set the opening date (up to 90 days away).",
           "Start verification. For video, film your sign or vehicle, your tools or stock, and proof you're the owner.",
@@ -367,7 +367,7 @@ export const GUIDES_CONTENT: Guide[] = [
         h: "Do the same on the other maps",
         bullets: [
           "Apple Business Connect: free, and the source for Apple Maps and Siri.",
-          "Bing Places: import your Google profile in one step. ChatGPT search leans on Bing.",
+          "Bing Places: import your Google profile in one step. Bing feeds Copilot and is one of the sources ChatGPT searches.",
           "Yelp: create the page now so AI assistants find it. Don't ask for Yelp reviews.",
           "Facebook: one page with the same name, address and phone.",
         ],
@@ -569,7 +569,7 @@ export const GUIDES_CONTENT: Guide[] = [
     faqs: [
       { q: "Why does ChatGPT recommend my competitor and not me?", a: "It can find more confirmation about them: more reviews, a Yelp page, directory listings and mentions on local sites. Compare their listings to yours and fill the gaps." },
       { q: "How long until ChatGPT recommends a new business?", a: "For specific service questions, a few weeks after your listings and service pages are live. For 'best X in town', it can take months of reviews and mentions." },
-      { q: "Does ChatGPT use Google reviews?", a: "Not directly in most cases. ChatGPT search draws on Bing and licensed sources like Yelp. Google's own AI uses your Google reviews." },
+      { q: "Does ChatGPT use Google reviews?", a: "Sometimes, through third-party data, but it leans much more on Yelp, TripAdvisor and other sites it searches. Google's own AI uses your Google reviews directly." },
       { q: "Can I pay ChatGPT to recommend my business?", a: "No. Recommendations aren't for sale. Claiming your ChatGPT business profile makes your details accurate but doesn't buy placement." },
     ],
     related: ["how-to-get-recommended-by-chatgpt-local-business", "claim-your-business-on-chatgpt", "do-i-need-a-website-local-business"],
@@ -634,7 +634,7 @@ export const GUIDES_CONTENT: Guide[] = [
         steps: [
           "Google Business Profile: Maps, Search and Google's AI answers.",
           "Apple Business Connect: Apple Maps and Siri, used on every iPhone.",
-          "Bing Places: import from Google in one step. ChatGPT search leans on Bing.",
+          "Bing Places: import from Google in one step. Bing feeds Copilot and is one of the sources ChatGPT searches.",
           "Yelp: ChatGPT cites Yelp more than any other directory.",
           "Facebook page: people check it for hours and photos.",
         ],
@@ -700,6 +700,422 @@ export const GUIDES_CONTENT: Guide[] = [
       { q: "Someone else claimed my Google listing. What do I do?", a: "Request ownership from the profile on Google Maps. The current owner has a few days to respond, and if they don't, you can get access." },
     ],
     related: ["where-to-list-a-new-business", "google-business-profile-suspended-new-business", "new-business-marketing-checklist"],
+  },
+
+  // Round 2 (Nov 18): profile setup details, other platforms, and industry setups owners ask about.
+  {
+    slug: "google-business-profile-categories",
+    topic: "google",
+    title: "Which Google Business Profile category should I pick? How to choose the right one",
+    description: "Your primary category is the biggest single ranking factor on Google Maps. How new owners pick it, how many extra categories to add, and when to change it.",
+    keyword: "google business profile primary category",
+    updated: "2026-11-18",
+    answer:
+      "Choose the most specific primary category that describes what you are, not everything you do: 'Pet groomer', not 'Pet store'; 'Nail salon', not 'Beauty salon'. The primary category decides most of the searches you can show up for. Then add up to nine secondary categories for your other main services. Look at which categories the top three businesses near you use, because Google is clearly rewarding those.",
+    sections: [
+      {
+        h: "How to choose your primary category",
+        steps: [
+          "Write down the one phrase most customers would type to find you, like 'house cleaning service' or 'taco truck'.",
+          "Start typing it in the category box and pick the closest exact match Google offers. You can't make up your own.",
+          "Search that phrase on Google Maps near you. The category under each top business's name is their primary category.",
+          "If the top results all share one category and it fits you, use it.",
+          "Pick the specific one over the broad one. 'Deck builder' beats 'Contractor' for deck searches.",
+        ],
+      },
+      {
+        h: "Secondary categories",
+        p: [
+          "Add the categories for your other main services, up to nine. Only add what you really do: a barbershop that also sells beard oil shouldn't add 'Cosmetics store'.",
+          "Then list each service separately in the Services section, with a short description and price. Those words help with specific searches and with AI answers about that service.",
+        ],
+      },
+      {
+        h: "Changing your category later",
+        p: [
+          "You can change it, but a primary category change can send your profile back into review, and sometimes asks you to verify again. Make it right at setup, then leave it alone for the first few weeks after you verify.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "How many categories can I have on Google Business Profile?", a: "One primary category and up to nine secondary categories, ten in total." },
+      { q: "Does my primary category affect ranking?", a: "Yes. It's one of the strongest signals for which searches you show up in. Secondary categories help too, but less." },
+      { q: "My exact business type isn't a category. What do I pick?", a: "The closest specific match. Then describe exactly what you do in your services, description and website, which is where Google and AI assistants pick up the detail." },
+    ],
+    related: ["business-not-showing-on-google-maps", "safely-edit-google-business-profile", "google-business-profile-before-opening"],
+  },
+  {
+    slug: "fake-or-unfair-google-review",
+    topic: "reviews",
+    title: "Got a fake or unfair Google review as a new business? What to do",
+    description: "When you only have five reviews, one 1-star hurts. How to report reviews that break Google's rules, how to reply to the ones that don't, and what never to do.",
+    keyword: "how to remove a fake google review",
+    updated: "2026-11-18",
+    answer:
+      "Report the review to Google if it breaks a rule: it's not from a real customer, it's from a competitor or ex-employee, it's spam, off-topic, or hateful. You can do that from the Reviews section of your profile, then check its status in Google's review management tool. Honest negative reviews won't be removed, so reply calmly and briefly, then focus on earning new reviews, which pushes it down and dilutes the average.",
+    sections: [
+      {
+        h: "Reviews Google will remove",
+        bullets: [
+          "Fake reviews, or reviews from someone who was never a customer",
+          "Reviews from competitors, current or former staff, or the owner",
+          "Spam, ads or links",
+          "Off-topic reviews about news, politics or another business",
+          "Harassment, hate speech, or personal information",
+          "Reviews used to blackmail you, such as 'pay or I'll leave more 1-stars'",
+        ],
+      },
+      {
+        h: "How to report one",
+        steps: [
+          "Open your profile, go to Reviews, find the review, and choose 'Report review'.",
+          "Pick the reason that matches the policy it breaks.",
+          "Check the status a few days later in Google's review management tool, where you can also appeal a decision once.",
+          "If you're threatened with fake reviews unless you pay, report it as extortion. Never pay.",
+        ],
+      },
+      {
+        h: "How to reply to an honest bad review",
+        steps: [
+          "Wait until you're calm. Replies are public forever.",
+          "Thank them, say you're sorry it fell short, and give one fact if it helps ('We now confirm every booking by text').",
+          "Offer to fix it offline with a phone number or email.",
+          "Keep it under four sentences. Future customers are the real audience.",
+        ],
+      },
+      { h: "The real fix", p: ["One bad review on five is painful. One bad review on forty barely moves your average. Asking every happy customer, every day, is still the best protection."] },
+    ],
+    faqs: [
+      { q: "Can I get a negative Google review removed?", a: "Only if it breaks Google's policies, for example if it's fake, from a competitor, off-topic or abusive. A real customer's honest bad review stays up." },
+      { q: "How long does Google take to review a reported review?", a: "Often a few days, sometimes longer. You can check the status and appeal once in Google's review management tool." },
+      { q: "Should I reply to a fake review?", a: "Yes, briefly and politely: say you have no record of them as a customer and invite them to contact you. Readers notice a calm reply." },
+    ],
+    related: ["get-first-google-reviews-new-business", "google-business-profile-suspended-new-business", "business-not-showing-on-google-maps"],
+  },
+  {
+    slug: "safely-edit-google-business-profile",
+    topic: "google",
+    title: "Changing your business name, phone or address on Google without getting suspended",
+    description: "Which Google Business Profile edits are safe any time, which ones can trigger re-verification or a suspension, and the safe way to make them.",
+    keyword: "change phone number google business profile",
+    updated: "2026-11-18",
+    answer:
+      "Posts, photos, review replies, hours and secondary categories are safe to change any time. Your business name, address, primary category, phone and website are the risky ones: changing them can send the profile back into review, ask you to verify again, or trigger a suspension if the change looks suspicious. Make risky changes one at a time, only when the real world has changed too, and update every other listing the same day.",
+    sections: [
+      {
+        h: "Safe any time",
+        bullets: ["Google posts, offers and events", "Photos and videos", "Replies to reviews", "Regular and holiday hours", "Services, menu and prices", "Secondary categories", "Description and attributes"],
+      },
+      {
+        h: "Handle with care",
+        bullets: [
+          "Business name: only to your real name as on your sign and paperwork. Never add keywords or a city.",
+          "Address: only if you actually moved. Edit the existing profile; don't create a new one.",
+          "Primary category: can trigger re-verification. Choose it well at setup.",
+          "Phone and website: change on Google, Yelp, Apple Maps, Bing and Facebook on the same day.",
+          "Switching between storefront and service-area: a big change Google reviews closely.",
+        ],
+      },
+      {
+        h: "The safe way to make a big change",
+        steps: [
+          "Make sure the real world matches first: new sign, new paperwork, new phone actually answering.",
+          "Make one risky change, then wait until it's published before the next.",
+          "Don't make a burst of edits in a row. Space them out.",
+          "Update every other listing and your website the same day, so the details match everywhere.",
+          "Keep proof handy (license, utility bill, photo of the new sign) in case Google asks to verify again.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Will changing my phone number on Google get me suspended?", a: "Not usually, if the number is a real business line you control and you update it everywhere. Changing it at the same time as your name or address is riskier." },
+      { q: "How do I change my business name on Google?", a: "If you rebranded, edit the name to match your new sign and paperwork. If it's a different business at the same spot, Google wants the old profile marked closed and a new one created." },
+      { q: "Why is my edit 'under review' or 'not applied'?", a: "Google checks edits to name, address, category and phone. Reviews usually finish within a few days. If an edit is rejected, it often means Google couldn't confirm it from your sign, website or other listings." },
+    ],
+    related: ["google-business-profile-suspended-new-business", "moving-or-duplicate-google-business-profile", "google-business-profile-categories"],
+  },
+  {
+    slug: "moving-or-duplicate-google-business-profile",
+    topic: "google",
+    title: "Moving locations or have two Google profiles? How to fix it without losing reviews",
+    description: "Google allows one profile per business. What to do when you move, when you find a duplicate, and when a previous tenant's listing sits at your address.",
+    keyword: "duplicate google business profile",
+    updated: "2026-11-18",
+    answer:
+      "Google allows one profile per business. If you move, edit the address on your existing profile instead of creating a new one, so you keep your reviews. If you accidentally made a second profile, remove the one with no reviews. If a duplicate you don't control has reviews, ask Google to merge it into yours, because merged profiles keep both sets of reviews.",
+    sections: [
+      {
+        h: "If you're moving",
+        steps: [
+          "Wait until you're actually operating at the new address, with your sign up.",
+          "Edit the address on your existing profile. Google may ask you to verify again.",
+          "Update Apple Maps, Bing, Yelp, Facebook and your website on the same day.",
+          "Post on Google that you've moved, with a photo of the new storefront.",
+        ],
+      },
+      {
+        h: "If there are two profiles for your business",
+        bullets: [
+          "One you made by mistake and it has no reviews: remove it from your dashboard. Removing deletes its content and managers.",
+          "One you don't control, with reviews: suggest a merge from Google Maps or contact Business Profile support. Reviews are combined; some replies may be lost.",
+          "A duplicate is hidden from Search and Maps, so leaving two around can mean the wrong one shows.",
+        ],
+      },
+      {
+        h: "An old business still shows at your address",
+        p: [
+          "Common when you take over a space. On Google Maps, open the old listing and suggest an edit marking it permanently closed or moved. On Apple Maps, use Report an Issue. Your own profile needs a different name and your own sign to be treated as separate.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Do I lose my Google reviews if I move?", a: "Not if you edit the address on your existing profile. Creating a new profile for the new address starts you from zero and creates a duplicate." },
+      { q: "Can two businesses have Google profiles at the same address?", a: "Yes, if they're truly distinct, with different names and their own signage. Two businesses in the same category at one address often get filtered so only one shows." },
+      { q: "What happens to reviews when Google merges two profiles?", a: "They're combined on the remaining profile, though replies to some reviews may be lost." },
+    ],
+    related: ["safely-edit-google-business-profile", "business-not-showing-on-google-maps", "google-business-profile-suspended-new-business"],
+  },
+  {
+    slug: "show-up-in-google-ai-overviews-local-business",
+    topic: "ai",
+    title: "How a local business shows up in Google's AI Overviews and AI Mode",
+    description: "Google's AI answers pull local details from your Business Profile, reviews and website. What Google says matters, and what to fix first.",
+    keyword: "how to show up in google ai overviews local business",
+    updated: "2026-11-18",
+    answer:
+      "Google's AI answers lean on your Google Business Profile, your reviews and your website. Google has said its AI features use the same ranking systems as search and run many related searches behind the scenes, so a complete profile matters most: the right categories, accurate hours and service areas, a detailed services list and recent photos. Reviews that mention specific services, and a website that answers customers' questions in plain words, do the rest.",
+    sections: [
+      {
+        h: "What Google's AI reads about you",
+        bullets: [
+          "Your Business Profile: categories, services, hours, service areas, attributes and photos",
+          "Your reviews, especially what people say about specific services",
+          "Your website, if Google can crawl it and it says something specific",
+          "Other sites that mention you: local news, blogs, community pages and 'best of' lists",
+        ],
+      },
+      {
+        h: "What to fix first",
+        steps: [
+          "Fill in every field of your Business Profile, especially services with short descriptions.",
+          "Make hours and holiday hours exact. Wrong hours are a common reason AI answers skip or misdescribe a business.",
+          "Ask reviewers to mention the service and neighborhood.",
+          "Add an FAQ to your website using your customers' own words, like 'Do you take walk-ins?'.",
+          "Keep your name, address and phone identical on your site and every listing.",
+        ],
+      },
+      {
+        h: "Check what it says",
+        p: [
+          "AI Overviews and AI Mode answers vary from person to person, so ranking in the map pack doesn't guarantee you're named. Ask AI Mode the questions your customers ask, note which sites it cites, and get listed on those. Check for mistakes, like wrong prices or policies, and fix the source.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "How do I get my business in Google's AI Overview?", a: "Complete your Google Business Profile, earn reviews that mention your services, and publish clear answers to customer questions on your website. There's no form to apply." },
+      { q: "Is AI Mode different from the Google Maps ranking?", a: "Related but not the same. AI Mode answers vary per person and pull from reviews and other websites, so a business can rank on Maps and still be left out, or the reverse." },
+      { q: "Google's AI says something wrong about my business. How do I fix it?", a: "Find the source it's reading, usually your profile, website or a directory, and correct it there. You can also send feedback on the AI answer itself." },
+    ],
+    related: ["why-isnt-my-business-on-chatgpt", "google-business-profile-categories", "do-i-need-a-website-local-business"],
+  },
+  {
+    slug: "apple-maps-business-connect-new-business",
+    topic: "listings",
+    title: "How to get a new business on Apple Maps with Apple Business Connect",
+    description: "Every iPhone uses Apple Maps and Siri. How to add your new business with Apple Business Connect, what verification needs, and what to do when it stalls.",
+    keyword: "how to add business to apple maps",
+    updated: "2026-11-18",
+    answer:
+      "Sign in to Apple Business Connect (businessconnect.apple.com) with an Apple Account, search for your business, and claim it or add it as new. Verify by phone call or by uploading a business document such as a utility bill or license that shows the same name and address. Apple says verification can take up to five business days; owners often report longer. It's free.",
+    sections: [
+      {
+        h: "Step by step",
+        steps: [
+          "Go to businessconnect.apple.com and sign in with an Apple Account the business will keep.",
+          "Search for your business. Claim it if it's listed, or choose to add a new location.",
+          "Enter your name, address, phone, website and category exactly as on Google.",
+          "Verify by phone, or upload a document showing the business name and address.",
+          "Add photos, hours and links (order, booking, menu) once approved.",
+        ],
+      },
+      {
+        h: "Common problems",
+        bullets: [
+          "Verification pending for weeks: re-upload a clearer document with the exact same name and address.",
+          "A previous tenant's business shows at your address: report it in the Maps app with Report an Issue.",
+          "Verified but not showing in search: give it a few days, then check the category and report the missing place from the Maps app.",
+          "Home-based business: use the address on your paperwork and a matching utility bill; Apple has no hidden-address option like Google.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Is Apple Business Connect free?", a: "Yes. Adding and managing your place card on Apple Maps is free." },
+      { q: "Does Apple Maps use my Google listing?", a: "No. Apple has its own data, so you need to add your business separately." },
+      { q: "How long does Apple Maps verification take?", a: "Apple says up to about five business days. Owners regularly report a few weeks, especially when the document doesn't exactly match." },
+    ],
+    related: ["where-to-list-a-new-business", "bing-places-new-business", "google-business-profile-before-opening"],
+  },
+  {
+    slug: "bing-places-new-business",
+    topic: "listings",
+    title: "Bing Places for a new business: the 5-minute import from Google",
+    description: "Bing Places now lives at bing.com/forbusiness and can import your Google profile. Why it matters for Copilot and ChatGPT, and how to set it up.",
+    keyword: "bing places for business",
+    updated: "2026-11-18",
+    answer:
+      "Go to bing.com/forbusiness, sign in, and choose to import from your Google Business Profile. Bing copies your name, hours and contact details and can verify you instantly through the import. Then check every field matches Google exactly. It's free, takes about five minutes, and puts you in Bing, Copilot and one of the search sources ChatGPT uses.",
+    sections: [
+      {
+        h: "Step by step",
+        steps: [
+          "Verify your Google Business Profile first. The import works best from a verified profile.",
+          "Go to bing.com/forbusiness and sign in with a Microsoft, Google or Facebook account.",
+          "Choose import from Google Business Profile and pick your business.",
+          "Check name, address, phone, hours, website and category match Google exactly.",
+          "Add photos and a description that names your main services and towns.",
+        ],
+      },
+      {
+        h: "Does ChatGPT use Bing?",
+        p: [
+          "In part. Research in 2026 found ChatGPT uses its own index plus several outside search providers, with Bing among them, and licensed data from Yelp and TripAdvisor for local answers. So Bing Places alone won't get you into ChatGPT, but it's a cheap gap to close, and Copilot uses it directly.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Is Bing Places free?", a: "Yes. Listing and managing your business on Bing Places is free." },
+      { q: "Where did bingplaces.com go?", a: "Bing Places moved to bing.com/forbusiness in October 2025. Old accounts were moved over automatically." },
+    ],
+    related: ["apple-maps-business-connect-new-business", "where-to-list-a-new-business", "why-isnt-my-business-on-chatgpt"],
+  },
+  {
+    slug: "yelp-for-new-business",
+    topic: "listings",
+    title: "Yelp for a new business: setup, the review filter, and why ChatGPT cares",
+    description: "Why new businesses' Yelp reviews land in 'not recommended', what you're allowed to do about it, and why a Yelp page now matters for ChatGPT.",
+    keyword: "yelp reviews not recommended new business",
+    updated: "2026-11-18",
+    answer:
+      "Claim your free page at biz.yelp.com and make the name, address, phone and hours match Google exactly. New businesses often see early reviews marked 'not recommended', because Yelp's software trusts active, established reviewers more than one-time ones. You're not allowed to ask for Yelp reviews, but you can tell customers you're on Yelp, with a sticker or 'Find us on Yelp' sign. A complete Yelp page matters more than ever, because ChatGPT leans heavily on Yelp data for local recommendations.",
+    sections: [
+      {
+        h: "Set up your page",
+        steps: [
+          "Search for your business at biz.yelp.com. Claim it, or add it if it's missing.",
+          "Confirm ownership by phone or email.",
+          "Copy your details from Google exactly, then add photos, services and 'specialties' in plain words.",
+          "Write the 'history' section: who you are, when you opened, what you're known for.",
+          "Skip ads while you're new. The free page is what AI assistants read.",
+        ],
+      },
+      {
+        h: "Why reviews go to 'not recommended'",
+        bullets: [
+          "The reviewer is new to Yelp, with no photo, friends or other reviews",
+          "Several reviews arrive close together",
+          "Reviews come from the same device or network as your business",
+          "The review looks requested or incentivized",
+        ],
+        p: ["Yelp's software re-checks reviews over time, so a review can move into the recommended section later as the reviewer becomes more active."],
+      },
+      {
+        h: "What you can do",
+        bullets: [
+          "Put up a Yelp sticker or 'Find us on Yelp' sign. Letting people know is fine; asking is not.",
+          "Reply to every review, including filtered ones.",
+          "Keep your page fresh with photos and updates.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Can I ask customers for Yelp reviews?", a: "No. Yelp's rules forbid asking for reviews. Asking for Google reviews is fine." },
+      { q: "Why are my Yelp reviews not recommended?", a: "Yelp's software favors reviews from established, active Yelp users. Reviews from first-time users, bursts of reviews, or reviews that look requested often get filtered, especially for new businesses." },
+      { q: "Does ChatGPT use Yelp?", a: "Yes. Yelp licenses its data to OpenAI, and studies in 2026 found Yelp behind most of ChatGPT's local business details." },
+    ],
+    related: ["why-isnt-my-business-on-chatgpt", "where-to-list-a-new-business", "get-first-google-reviews-new-business"],
+  },
+  {
+    slug: "food-truck-google-business-profile",
+    topic: "google",
+    industry: "food-trucks",
+    title: "Can a food truck have a Google Business Profile? How to set one up",
+    description: "Google's guidelines don't mention food trucks directly. The two setups that work, how to verify, and how to tell customers where you'll be.",
+    keyword: "food truck google business profile",
+    updated: "2026-11-18",
+    answer:
+      "Yes. Most food trucks set up as a service-area business: verify with the address on your business paperwork, hide it from customers, and list the towns you serve. Then post your weekly locations as Google updates and keep Instagram and Yelp matching. If you park at the same spot every day during set hours with your own sign, you can show that address instead. Google's guidelines don't mention food trucks directly, so keep it simple and consistent.",
+    sections: [
+      {
+        h: "Option 1: service-area business (most trucks)",
+        steps: [
+          "Choose that you serve customers at their locations, and hide the address.",
+          "Use the address on your business license for verification.",
+          "List the cities or neighborhoods you regularly park in.",
+          "Verify with video: show the truck with its name, your kitchen, and your permits.",
+        ],
+      },
+      {
+        h: "Option 2: fixed spot",
+        p: ["If you're at the same location every day during your posted hours, with your name on the truck or a sign, you can show that address. Change it only if you really move, because frequent address changes can trigger a suspension."],
+      },
+      {
+        h: "Tell people where you are",
+        bullets: [
+          "Post this week's schedule as a Google update every Monday",
+          "Keep a 'where we are' link on Instagram and Yelp",
+          "List catering as a service, with a starting price",
+          "Add your truck to Roaming Hunger and StreetFoodFinder",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Is a food truck allowed on Google Maps?", a: "Yes. Most trucks list as a service-area business with a hidden address. Google's rules don't single out food trucks." },
+      { q: "Should I change my Google address every time I park somewhere new?", a: "No. Frequent address changes look suspicious and can trigger a suspension. Post your schedule as an update instead." },
+    ],
+    related: ["find-food-truck-events-near-me", "service-area-business-hide-address", "google-business-profile-video-verification"],
+  },
+  {
+    slug: "salon-suite-google-business-profile",
+    topic: "google",
+    industry: "beauty",
+    title: "Salon suite or shared building? How to get your own Google profile that shows up",
+    description: "Renting a suite in a salon building or a chair in a shared space? What Google allows, how to avoid being merged or filtered, and how to set it up.",
+    keyword: "salon suite google business profile",
+    updated: "2026-11-18",
+    answer:
+      "If you run your own business with its own name, you can have your own Google profile at a shared address. Put your suite number on address line 2, use your own phone number and booking link, and have your business name on a sign at your door. Google may still show only one business in the same category at one address for a given search, so reviews and a specific category matter even more for you.",
+    sections: [
+      {
+        h: "What Google needs to see",
+        bullets: [
+          "Your own business name, the same on your sign, paperwork and profile",
+          "Permanent signage with your name at your suite",
+          "A phone number you control, not the building's front desk",
+          "Your own website or booking page",
+        ],
+      },
+      {
+        h: "Set it up",
+        steps: [
+          "Enter the building address on line 1 and your suite number on line 2.",
+          "Pick the most specific category for what you do: 'Nail salon', 'Eyelash salon', 'Barber shop'.",
+          "Add your own phone and booking link.",
+          "Verify with video: show the building sign, your suite door with your name, and you at work.",
+        ],
+      },
+      {
+        h: "Why you might not show up",
+        p: [
+          "Google filters similar businesses at the same address, so another stylist in your building can show instead of you for the same search. A suite number doesn't count as a separate address for this. Being more specific in your category and services, and earning more recent reviews, is how you stand out.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Can I have a Google Business Profile in a salon suite?", a: "Yes, if it's your own business with its own name and sign, and you serve clients there during your hours. Add your suite number on address line 2." },
+      { q: "Why does Google show another salon in my building instead of me?", a: "Google's filter often shows only one business per category at an address for a given search. More specific categories, services and recent reviews help you win." },
+      { q: "Can Google merge my profile with another business in my building?", a: "It can if the names, phones or websites look too similar. Use your own name, phone and website to stay separate." },
+    ],
+    related: ["get-clients-new-nail-salon", "google-business-profile-categories", "moving-or-duplicate-google-business-profile"],
   },
 ];
 
