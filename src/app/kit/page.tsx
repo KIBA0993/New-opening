@@ -12,6 +12,7 @@ import { directoriesFor } from "@/lib/directories";
 import { GUIDES } from "@/lib/platforms";
 import { reviewLink } from "@/lib/providers/places";
 import { loadProgress } from "@/lib/kitCheck";
+import { siteForKit } from "@/lib/hostedSite";
 import { KitView } from "./KitView";
 
 export const metadata: Metadata = { title: "Your Launch Kit", robots: { index: false } };
@@ -34,7 +35,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
   }
 
   const { profile } = paid;
-  const [kit, trial, progress] = await Promise.all([writeKit(session_id, profile), kitTrial(session_id), loadProgress(session_id)]);
+  const [kit, trial, progress, site] = await Promise.all([writeKit(session_id, profile), kitTrial(session_id), loadProgress(session_id), siteForKit(session_id)]);
   const industry = industryBySlug(profile.industry)!;
 
   // Email the kit link once, so the owner can always get back here.
@@ -50,6 +51,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       serviceArea={industry.serviceArea}
       storeKey={session_id}
       initialProgress={progress}
+      site={site}
       industryName={industry.name}
       directories={directoriesFor(profile.industry)}
       schema={businessSchema(profile, kit, industry.serviceArea)}

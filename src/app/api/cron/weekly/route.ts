@@ -5,7 +5,7 @@ import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
 import { firstEmailJustSent, trialNotice } from "@/lib/welcome";
 import { alertOwner } from "@/lib/alert";
-import { kitBlock, applyKitPost } from "@/lib/kitDigest";
+import { applyKitPost, kitBlock, ownerLinks } from "@/lib/kitDigest";
 
 export const maxDuration = 300;
 
@@ -32,6 +32,7 @@ export async function GET(req: Request) {
       await applyKitPost(digest, kit, checkout?.id, profile);
       const html = renderDigestHtml(digest, {
         kitProgress: kit,
+        ...ownerLinks(profile),
         report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
         account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
         trial: trialNotice(sub, checkout?.id),

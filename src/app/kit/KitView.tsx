@@ -9,6 +9,7 @@ import type { Directory } from "@/lib/directories";
 import { doneCount, isDone, MANUAL_STEPS, STEP_IDS, type KitProgress, type StepCheck, type StepId } from "@/lib/kitSteps";
 import { LIMITS, shortcuts, type PlatformGuide } from "@/lib/platforms";
 import { cleanSlug, textToHtml, websiteZip } from "@/lib/websiteFiles";
+import { SiteEditor, type PublishedSite } from "./SiteEditor";
 import type { LaunchKit, OwnerProfile } from "@/lib/types";
 
 /** The Kit buyer's Autopilot: on (free week or paid), cancelled, or not bought (offer it). */
@@ -33,9 +34,10 @@ interface Props {
   robots: string;
   autopilot: AutopilotState;
   initialProgress: KitProgress;
+  site?: PublishedSite | null;
 }
 
-export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot, initialProgress }: Props) {
+export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot, initialProgress, site = null }: Props) {
   const [progress, setProgress] = useState<KitProgress>(initialProgress);
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState("");
@@ -293,6 +295,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
         <Step n={6 + guides.length - 1} id="website" title="Make your website easy for AI to quote" done={done.website} check={checks.website} onToggle={toggle}
           intro="Gemini and Perplexity cite business websites in about 9 of 10 local answers. A page per service is what wins specific questions, even against bigger rivals. Send this step to whoever runs your site, or paste it into your site builder.">
           <div className="grid gap-3">
+            {storeKey.startsWith("preview:") ? null : <SiteEditor storeKey={storeKey} kit={kit} profile={profile} initial={site} open={!profile.website} />}
             <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span>
                 <span className="block font-semibold">Download every page as files</span>

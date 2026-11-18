@@ -42,7 +42,7 @@ const p = (t: string) => `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvet
 const box = (t: string) =>
   `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:8px 0 12px;font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(t)}</div>`;
 
-export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string; trial?: { renews: string; price: string; cancelUrl: string }; kitProgress?: KitBlock | null } = {}) {
+export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string; trial?: { renews: string; price: string; cancelUrl: string }; kitProgress?: KitBlock | null; google?: string; review?: string } = {}) {
   const k = links.kitProgress;
   const kitBox = k
     ? `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:16px 0">
@@ -76,8 +76,13 @@ ${moves}
 ${h2(k && k.week <= 4 ? `3. Your Google post for this week (week ${k.week} of your Kit)` : "3. Your Google post for this week")}
 ${box(d.googlePost)}
 ${p(`Paste it at <a href="https://business.google.com" style="color:#B4441A">business.google.com</a> → Add update.`)}
-${h2("4. Reviews to answer")}
-${d.reviewReplies.map((r) => p(`<i>${esc(r.review)}</i>`) + box(r.reply)).join("")}
+${h2(d.reviewReplies.length ? "4. Reviews to answer" : "4. Reviews")}
+${
+  d.reviewReplies.length
+    ? d.reviewReplies.map((r) => p(`<i>${esc(r.review)}</i>`) + box(r.reply)).join("") +
+      (links.google ? p(`Reply from <a href="${links.google}" style="color:#B4441A">your profile on Google Search</a> (signed in as the owner) → Reviews → Reply. Owners who reply get more reviews.`) : "")
+    : p(`No new Google reviews in the last two weeks. Text your review link to 3 happy customers from this week, and ask them to mention the service they got.${links.review ? ` Your link: <a href="${links.review}" style="color:#B4441A">${esc(links.review)}</a>` : ""}`)
+}
 ${h2(`5. Idea of the week: ${d.campaign.title}`)}
 ${p(esc(d.campaign.idea))}
 ${h2("Events near you to join or sponsor")}
