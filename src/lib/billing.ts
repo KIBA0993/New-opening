@@ -59,7 +59,10 @@ export async function createCheckout(product: Product, profile: OwnerProfile): P
         price_data: {
           currency: "usd",
           unit_amount: (product === "kit" ? kitAmount : PRICES[product].amount) * 100,
-          product_data: { name: product === "kit" ? "MapDebut Launch Kit" : "MapDebut Weekly Autopilot" },
+          product_data:
+            product === "kit"
+              ? { name: "MapDebut Launch Kit", description: `Every profile written for ${profile.name}, Google verification coach, guided setup on 6 platforms, review link and QR card. 14-day money-back promise.` }
+              : { name: "MapDebut Weekly Autopilot", description: `A weekly email for ${profile.name}: AI recommendation check, rival moves, a Google post and review replies written, local events. Cancel any time.` },
           ...(product === "kit" ? {} : { recurring: { interval: product === "monthly" ? "month" : "year" } }),
         },
       };
@@ -96,6 +99,7 @@ export async function paidSession(sessionId: string): Promise<{ profile: OwnerPr
     const s = await stripe().checkout.sessions.retrieve(sessionId);
     if (s.payment_status !== "paid" && s.status !== "complete") return null;
     const profile = metadataToProfile(s.metadata as Record<string, string>);
+    if (profile && !profile.email) profile.email = s.customer_details?.email || ""; // entered on Stripe's page
     return profile ? { profile, product: (s.metadata?.product as Product) || "kit" } : null;
   } catch {
     return null;

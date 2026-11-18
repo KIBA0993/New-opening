@@ -42,7 +42,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       if (pi) {
         const intent = await stripe().paymentIntents.retrieve(pi);
         if (!intent.metadata.kit_emailed) {
-          await sendEmail(profile.email, `Your Launch Kit for ${profile.name}`, renderKitEmail(profile.name, `${env.siteUrl}/kit?session_id=${session_id}`));
+          if (profile.email) await sendEmail(profile.email, `Your Launch Kit for ${profile.name}`, renderKitEmail(profile.name, `${env.siteUrl}/kit?session_id=${session_id}`));
           await stripe().paymentIntents.update(pi, { metadata: { kit_emailed: "1" } });
         }
       }

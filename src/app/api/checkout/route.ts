@@ -18,7 +18,8 @@ const Body = z.object({
     services: z.string().max(490).default(""),
     different: z.string().max(490).default(""),
     areas: z.string().max(490).default(""),
-    email: z.string().email().max(200),
+    // Optional: when it's missing, Stripe Checkout asks for it, and we read it back from Stripe after payment.
+    email: z.union([z.literal(""), z.string().trim().email().max(200)]).optional().default(""),
   }),
 });
 
