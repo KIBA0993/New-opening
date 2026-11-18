@@ -22,7 +22,8 @@ import { EmailReport, ShowFew, StickyKitBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Your free check", robots: { index: false } };
-export const maxDuration = 60;
+// A first-time check (AI answers, listings, Maps grid, profile lookups) can take over a minute.
+export const maxDuration = 300;
 
 type SP = Promise<{ industry?: string; name?: string; city?: string }>;
 

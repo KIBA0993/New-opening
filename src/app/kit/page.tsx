@@ -13,7 +13,7 @@ import { reviewLink } from "@/lib/providers/places";
 import { KitView } from "./KitView";
 
 export const metadata: Metadata = { title: "Your Launch Kit", robots: { index: false } };
-export const maxDuration = 60;
+export const maxDuration = 300; // writing the kit with Claude can take a while on first open
 
 export default async function KitPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
   const { session_id } = await searchParams;

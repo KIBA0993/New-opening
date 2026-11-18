@@ -6,7 +6,7 @@ import { getPlace } from "@/lib/providers/places";
 import { freshCheck } from "@/lib/report";
 import type { Place } from "@/lib/types";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const Body = z.object({ session_id: z.string().min(5).max(2000) });
 

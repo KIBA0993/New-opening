@@ -130,7 +130,12 @@ export function signals(place: Place, rivals: Place[], x: ReadinessExtras = {}):
   const total = counted.reduce((n, r) => n + r.weight, 0);
   const got = counted.reduce((n, r) => n + r.weight * (r.points as number), 0);
   const items: Signal[] = counted.map((r) => ({ label: r.label, note: r.note, light: (r.points as number) >= 0.85 ? "green" : (r.points as number) >= 0.5 ? "yellow" : "red" }));
-  return { items, score: Math.round((got / (total || 1)) * 100) };
+  // Each item still to fix costs extra on top of its lost points (amber 4, red 6, up to 20),
+  // so a business with real gaps can't round up into the 90s.
+  const yellows = items.filter((i) => i.light === "yellow").length;
+  const reds = items.filter((i) => i.light === "red").length;
+  const penalty = Math.min(20, yellows * 4 + reds * 6);
+  return { items, score: Math.max(0, Math.round((got / (total || 1)) * 100 - penalty)) };
 }
 
 /** The graded score with every extra fact we can get. Shared per request. */
