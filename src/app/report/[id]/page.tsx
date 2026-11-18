@@ -15,7 +15,7 @@ import { allowCheck } from "@/lib/ratelimit";
 import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote } from "@/lib/pricing";
-import { GRID_SIZE, mapGrid } from "@/lib/providers/grid";
+import { MapGrid } from "@/components/MapGrid";
 import { aiReport, aiSummary, checkContext, citationGaps, getRivals, nextFix, PLATFORM_LABEL, signals, visibility } from "@/lib/report";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
 
@@ -80,7 +80,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
           </Suspense>
           {place.id !== "new" ? (
             <Suspense fallback={<div className="skeleton mt-12 h-72" />}>
-              <GridSection place={place} industry={industry} />
+              <MapGrid place={place} keyword={checkContext(place, industry).term} />
             </Suspense>
           ) : null}
           <Suspense fallback={<div className="skeleton mt-12 h-96" />}>
@@ -151,40 +151,6 @@ async function VisibilityHero({ place, industry }: { place: Place; industry: Ind
         ))}
       </ul>
       <a href="#answers" className="mt-4 inline-block text-[0.95rem] underline underline-offset-4">See every answer</a>
-    </section>
-  );
-}
-
-const GRID_TONE = (r: number | null) =>
-  r == null ? "bg-[#d9d1c3] text-ink-3" : r <= 3 ? "bg-good text-white" : r <= 10 ? "bg-warn text-white" : "bg-bad text-white";
-
-/** 5x5 Google Maps positions around the shop. */
-async function GridSection({ place, industry }: { place: Place; industry: IndustrySlug }) {
-  const { term } = checkContext(place, industry);
-  const grid = await mapGrid(place, term);
-  if (!grid) return null;
-  const center = Math.floor((GRID_SIZE * GRID_SIZE) / 2);
-  const across = Math.round(grid.spacingMiles * (GRID_SIZE - 1) * 10) / 10;
-  return (
-    <section aria-labelledby="grid" className="mt-12">
-      <div className="flex flex-wrap items-center gap-2">
-        <Pill light={grid.top3 >= 13 ? "green" : grid.top3 >= 5 ? "yellow" : "red"}>Top 3 in {grid.top3} of {grid.cells.length} spots</Pill>
-        <DemoTag show={grid.demo} />
-      </div>
-      <h2 id="grid" className="font-display mt-3 text-[1.7rem] leading-snug">Where you show up on Google Maps</h2>
-      <p className="mt-1 text-ink-2">
-        Your position for &ldquo;{grid.keyword}&rdquo; from 25 spots across {across} miles around you. AI assistants lean on these same Maps results.
-      </p>
-      <div className="mx-auto mt-5 grid max-w-sm gap-1.5" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` }} role="table" aria-label="Google Maps position by location, north at top">
-        {grid.cells.map((c, i) => (
-          <div key={i} role="cell" className={`flex aspect-square items-center justify-center rounded-lg text-[1rem] font-semibold ${GRID_TONE(c.rank)} ${i === center ? "ring-2 ring-ink ring-offset-2 ring-offset-paper" : ""}`} aria-label={`${i === center ? "Your shop: " : ""}${c.rank ? `position ${c.rank}` : "not in the top 20"}`}>
-            {c.rank ?? "20+"}
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-center text-[0.9rem] text-ink-3">
-        Outlined square is your shop. Green is top 3, amber is 4 to 10, red is 11 to 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
-      </p>
     </section>
   );
 }

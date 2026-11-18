@@ -13,6 +13,7 @@ export const env = {
   gemini: process.env.GEMINI_API_KEY || "",
   geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   stripe: process.env.STRIPE_SECRET_KEY || "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
   stripePriceKit: process.env.STRIPE_PRICE_KIT || "",
   stripePriceMonthly: process.env.STRIPE_PRICE_AUTOPILOT_MONTHLY || "",
   stripePriceYearly: process.env.STRIPE_PRICE_AUTOPILOT_YEARLY || "",

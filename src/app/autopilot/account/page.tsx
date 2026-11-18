@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { BuyerMapGrid } from "@/components/MapGrid";
 import { DemoTag } from "@/components/ui";
 import { applyTopup, CREDITS, getAccount } from "@/lib/credits";
 import { ReCheck } from "./ReCheck";
@@ -41,6 +43,10 @@ export default async function AccountPage({ searchParams }: { searchParams: SP }
           {fromMonth} of {account.allowance} from this month&apos;s allowance{account.extra ? `, plus ${account.extra} extra` : ""}. Your allowance resets on {nextMonth}. Extra re-checks never expire.
         </p>
       </section>
+
+      <Suspense fallback={null}>
+        <BuyerMapGrid placeId={account.profile.placeId} industry={account.profile.industry} className="card mt-6 p-5 sm:p-7" />
+      </Suspense>
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href={`/report/${encodeURIComponent(account.profile.placeId)}?industry=${account.profile.industry}`} className="btn btn-ghost">See your full check</Link>

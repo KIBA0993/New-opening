@@ -4,7 +4,7 @@ import { cache } from "react";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
-import { askEngine, cachedAsk, checkEngines, ENGINE_LABEL, excerptAround, mentions, searchJSON } from "./providers/ai";
+import { askEngine, cachedAsk, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
@@ -32,7 +32,9 @@ export function checkContext(place: Place, industrySlug: IndustrySlug) {
 /** Nearby rivals, fetched once per request (both report sections need them). */
 export const getRivals = cache(async (place: Place, industrySlug: IndustrySlug) => {
   const { term, area } = checkContext(place, industrySlug);
-  return findRivals(place, industrySlug, `${term} near ${area}`);
+  const found = await findRivals(place, industrySlug, `${term} near ${area}`);
+  // The owner's other locations aren't rivals; a mention of their brand already counts as a win.
+  return { ...found, rivals: found.rivals.filter((r) => r.id !== place.id && !sameBrand(r.name, place.name)) };
 });
 
 // ---------- 1) Instant signals: no AI, about 2 seconds ----------

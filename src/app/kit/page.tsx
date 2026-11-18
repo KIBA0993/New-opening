@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { BuyerMapGrid } from "@/components/MapGrid";
 import { paidSession, stripe } from "@/lib/billing";
 import { env, has } from "@/lib/env";
 import { renderKitEmail, sendEmail } from "@/lib/email";
@@ -50,6 +52,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
   }
 
   return (
+    <>
     <KitView
       kit={kit}
       profile={profile}
@@ -59,5 +62,11 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       storeKey={session_id}
       industryName={industry.name}
     />
+    <div className="mx-auto max-w-3xl px-4 sm:px-6">
+      <Suspense fallback={null}>
+        <BuyerMapGrid placeId={profile.placeId} industry={profile.industry} className="card mt-12 p-5 sm:p-7" />
+      </Suspense>
+    </div>
+    </>
   );
 }

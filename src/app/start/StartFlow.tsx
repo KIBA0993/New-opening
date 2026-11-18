@@ -76,8 +76,15 @@ export function StartFlow() {
 
   const possibleDuplicate = useMemo(() => {
     if (results.length < 2) return false;
+    // Only warn when the same name shows up twice at the same address. Same name at different
+    // addresses is usually a brand with several locations, so the owner just picks theirs.
+    const keys = results.map((r) => `${normalize(r.name)}|${normalize(r.address)}`);
+    return keys.some((k, i) => keys.indexOf(k) !== i);
+  }, [results]);
+
+  const severalLocations = useMemo(() => {
     const names = results.map((r) => normalize(r.name));
-    return names.some((n, i) => names.findIndex((m) => m === n) !== i);
+    return names.length > 1 && names.some((n, i) => names.indexOf(n) !== i);
   }, [results]);
 
   function choose(r: Found) {
@@ -172,7 +179,7 @@ export function StartFlow() {
           {results.length ? (
             <>
               <div className="flex items-center gap-3">
-                <Heading>{results.length === 1 ? "Is this you?" : "Which one is you?"}</Heading>
+                <Heading>{results.length === 1 ? "Is this you?" : severalLocations ? "Pick your location" : "Which one is you?"}</Heading>
                 <DemoTag show={demo} />
               </div>
               {possibleDuplicate ? (

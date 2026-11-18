@@ -204,6 +204,14 @@ export function normalizeName(name: string) {
     .join(" ");
 }
 
+/** Same business or another location of the same brand ("4ever Young" vs "4ever Young Johns Creek"). */
+export function sameBrand(a: string, b: string) {
+  const x = normalizeName(a);
+  const y = normalizeName(b);
+  if (!x || !y) return false;
+  return x === y || mentions(a, b) || mentions(b, a);
+}
+
 export function mentions(answer: string, name: string) {
   const a = ` ${normalizeName(answer)} `;
   const n = normalizeName(name);

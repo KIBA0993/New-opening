@@ -21,7 +21,8 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
   }
 
   // Send the first email right away, once, after the page has been returned.
-  if (has.stripe() && !session_id.startsWith("demo_")) {
+  // When the Stripe webhook is set up it sends the email instead, so the two never race.
+  if (has.stripe() && !env.stripeWebhookSecret && !session_id.startsWith("demo_")) {
     after(async () => {
       try {
         const s = await stripe().checkout.sessions.retrieve(session_id);
