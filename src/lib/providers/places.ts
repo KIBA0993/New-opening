@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { nearBias, type LatLng } from "../geo";
 import { env, has } from "../env";
 import { spend } from "../guard";
@@ -168,8 +169,31 @@ export async function autocomplete(input: string, sessionToken: string, near: La
     }));
 }
 
+// Google's details and rival lists are kept for 30 minutes, so refreshes, back-and-forth clicks and
+// the several parts of one report don't each pay for the same lookup. Google's terms don't allow
+// keeping Places content for long, so this stays short. Failed lookups aren't kept.
+const HOLD = 60 * 30;
+
+class Miss extends Error {}
+
+const heldPlace = unstable_cache(
+  async (id: string) => {
+    const p = await fetchPlace(id);
+    if (!p) throw new Miss();
+    return p;
+  },
+  ["place-v1"],
+  { revalidate: HOLD },
+);
+
+/** Place details. With a session token (the search box flow) it always asks Google, so the session bills as one. */
 export async function getPlace(id: string, sessionToken?: string): Promise<Place | null> {
   if (id.startsWith("demo_") || !has.places()) return mockPlace(id);
+  if (sessionToken) return fetchPlace(id, sessionToken);
+  return heldPlace(id).catch(() => null);
+}
+
+async function fetchPlace(id: string, sessionToken?: string): Promise<Place | null> {
   try {
     await spend("places");
   } catch {
@@ -194,12 +218,15 @@ function milesBetween(a: { lat?: number; lng?: number }, b: { lat?: number; lng?
   return Math.round(2 * R * Math.asin(Math.sqrt(s)) * 10) / 10;
 }
 
-/** Top 5 nearby businesses of the same kind, by rating and reviews. */
-export async function findRivals(
-  place: Place,
-  industry: IndustrySlug,
-  term: string,
-): Promise<{ rivals: (Place & { distanceMiles?: number })[]; demo: boolean }> {
+type Rivals = { rivals: (Place & { distanceMiles?: number })[]; demo: boolean };
+
+/** Top 5 nearby businesses of the same kind, by rating and reviews. Kept 30 minutes per business and search. */
+export function findRivals(place: Place, industry: IndustrySlug, term: string): Promise<Rivals> {
+  if (!has.places() || place.id.startsWith("demo_") || place.id === "new" || place.lat == null) return fetchRivals(place, industry, term);
+  return unstable_cache(() => fetchRivals(place, industry, term), ["rivals-v1", place.id, industry, term], { revalidate: HOLD })();
+}
+
+async function fetchRivals(place: Place, industry: IndustrySlug, term: string): Promise<Rivals> {
   if (!has.places() || place.id.startsWith("demo_") || place.lat == null) {
     const rivals = mockRivals(industry, place.name).map((r) => ({ ...r, distanceMiles: milesBetween(place, r) }));
     return { rivals, demo: true };
