@@ -16,7 +16,7 @@ import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { MapGrid } from "@/components/MapGrid";
-import { aiReport, aiSummary, checkContext, citationGaps, findFixes, PLATFORM_LABEL, readiness, visibility } from "@/lib/report";
+import { aiReport, aiSummary, checkContext, citationGaps, engineReadiness, findFixes, PLATFORM_LABEL, readiness, visibility } from "@/lib/report";
 import { cache } from "react";
 import { EmailReport, ShowFew, StickyKitBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
@@ -91,6 +91,9 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
             <VisibilityHero place={place} industry={industry} />
             <TopFixes place={place} industry={industry} />
             <AISection place={place} industry={industry} />
+          </Suspense>
+          <Suspense fallback={<div className="skeleton mt-12 h-64" />}>
+            <EngineBars place={place} industry={industry} />
           </Suspense>
           <Suspense fallback={<SignalsSkeleton />}>
             <SignalsSection place={place} industry={industry} />
@@ -167,7 +170,71 @@ async function VisibilityHero({ place, industry }: { place: Place; industry: Ind
           </li>
         ))}
       </ul>
-      <a href="#answers" className="mt-4 inline-block text-[0.95rem] underline underline-offset-4">See every answer</a>
+      <p className="mt-3 text-[0.9rem] text-ink-3">AI answers change from one ask to the next, so this is how often you come up, not a fixed rank.</p>
+      <a href="#answers" className="mt-3 inline-block text-[0.95rem] underline underline-offset-4">See every answer and the sites the AI read</a>
+    </section>
+  );
+}
+
+const toneOf = (n: number): Light => (n >= 80 ? "green" : n >= 55 ? "yellow" : "red");
+const TONE_TEXT: Record<Light, string> = { green: "text-good", yellow: "text-warn", red: "text-bad", gray: "text-ink-2" };
+const TONE_BAR: Record<Light, string> = { green: "bg-good", yellow: "bg-[#c98a00]", red: "bg-bad", gray: "bg-ink-3" };
+
+/** Readiness per kind of assistant: each one reads different sources. Streams in after the listings. */
+async function EngineBars({ place, industry }: { place: Place; industry: IndustrySlug }) {
+  const { bars, overall, demo } = await engineReadiness(place, industry);
+  const tone = toneOf(overall);
+  return (
+    <section aria-labelledby="bars" className="card mt-12 p-5 sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="eyebrow">AI readiness by assistant</p>
+        <DemoTag show={demo} />
+      </div>
+      <h2 id="bars" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">
+        Your AI readiness score: <span className={TONE_TEXT[tone]}>{overall}</span>/100
+      </h2>
+      <p className="mt-1 text-ink-2">Each assistant reads different sources, so you can be ready for one and invisible to another.</p>
+      <ul className="mt-5 space-y-5">
+        {bars.map((b) => {
+          const t = toneOf(b.score);
+          const todo = b.items.filter((i) => i.light !== "green");
+          return (
+            <li key={b.key}>
+              <div className="flex items-baseline justify-between gap-3">
+                <p>
+                  <span className="font-semibold">{b.label}</span>
+                  <span className="block text-[0.9rem] text-ink-3">{b.sub}</span>
+                </p>
+                <p className={`font-display shrink-0 text-[1.4rem] ${TONE_TEXT[t]}`}>{b.score}</p>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-paper-3" role="img" aria-label={`${b.label}: ${b.score} out of 100`}>
+                <div className={`h-full ${TONE_BAR[t]}`} style={{ width: `${Math.max(3, b.score)}%` }} />
+              </div>
+              {b.key === "google" ? (
+                <a href="#score" className="mt-2 inline-block text-[0.92rem] underline underline-offset-4">See the Google profile checks</a>
+              ) : b.items.length ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[0.92rem] underline underline-offset-4">
+                    {todo.length ? `${todo.length} to fix for ${b.label}` : `What we checked for ${b.label}`}
+                  </summary>
+                  <dl className="mt-2 divide-y divide-line border-y border-line">
+                    {b.items.map((s) => (
+                      <div key={s.label} className="flex items-start justify-between gap-3 py-3">
+                        <dt className="min-w-0">
+                          <span className="font-semibold">{s.label}</span>
+                          <span className="block text-[0.92rem] text-ink-3">{s.note}</span>
+                        </dt>
+                        <dd className="shrink-0"><Pill light={s.light}>{s.light === "green" ? "Good" : s.light === "yellow" ? "Improve" : "Fix"}</Pill></dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <KitLine>The Launch Kit covers all three</KitLine>
     </section>
   );
 }
@@ -177,15 +244,15 @@ async function SignalsSection({ place, industry }: { place: Place; industry: Ind
   const { items, score, demo } = await readiness(place, industry);
   const overall: Light = score >= 80 ? "green" : score >= 55 ? "yellow" : "red";
   return (
-    <section aria-labelledby="score" className="card mt-12 p-5 sm:p-7">
+    <section id="score" aria-labelledby="score-h" className="card mt-12 scroll-mt-6 p-5 sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
         <Pill light={overall}>{overall === "green" ? "Looking good" : overall === "yellow" ? "Some gaps" : "Customers can't find you yet"}</Pill>
         <DemoTag show={demo} />
       </div>
-      <h2 id="score" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">
-        Your AI readiness score: <span className={overall === "green" ? "text-good" : overall === "yellow" ? "text-warn" : "text-bad"}>{score}</span>/100
+      <h2 id="score-h" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">
+        Google AI readiness: <span className={overall === "green" ? "text-good" : overall === "yellow" ? "text-warn" : "text-bad"}>{score}</span>/100
       </h2>
-      <p className="mt-1 text-ink-2">The signals AI assistants check before they recommend a local business.</p>
+      <p className="mt-1 text-ink-2">What Google&apos;s AI and Maps check on your Google profile before they recommend you.</p>
       <dl className="mt-5 divide-y divide-line border-y border-line">
         {items.map((s) => (
           <div key={s.label} className="flex items-start justify-between gap-3 py-3">
@@ -210,6 +277,9 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   const ind = industryBySlug(industry)!;
   const listed = report.listings.filter((l) => l.state === "found").length;
   const gaps = citationGaps(report.listings, report.rivals);
+  const counts = new Map<string, number>();
+  for (const a of report.answers) for (const d of a.sources || []) counts.set(d, (counts.get(d) || 0) + 1);
+  const topSources = [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6).map(([d]) => d);
 
   return (
     <>
@@ -220,7 +290,12 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
           <DemoTag show={report.demo} />
         </div>
         <h2 id="ai" className="font-display mt-3 text-[1.7rem] leading-snug sm:text-[2rem]">What AI assistants said</h2>
-        <p className="mt-1 text-ink-2">We asked the questions your customers ask, with live web search.</p>
+        <p className="mt-1 text-ink-2">We asked three kinds of questions customers ask: a general one, one about a specific service, and one about a need. Each ran with live web search.</p>
+        {topSources.length ? (
+          <p className="mt-3 rounded-xl bg-paper-3 p-3 text-[0.95rem] text-ink-2">
+            <b>Where the AI looked:</b> {topSources.join(", ")}. Being listed with the same details on these sites is how you get into the answer.
+          </p>
+        ) : null}
         <div className="mt-5 space-y-5">
           {prompts.map((prompt) => (
             <div key={prompt} className="card p-4 sm:p-5">
@@ -238,6 +313,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
                         <p className="mt-2 text-[0.95rem] text-ink-3">{a.excerpt || "No businesses named."}</p>
                       </details>
                       {a.rivalsMentioned.length ? <p className="mt-1 text-[0.92rem] text-ink-2">Named instead: {a.rivalsMentioned.join(", ")}</p> : null}
+                      {a.sources?.length ? <p className="mt-1 text-[0.85rem] text-ink-3">Sources it read: {a.sources.slice(0, 5).join(", ")}</p> : null}
                     </li>
                   ))}
               </ul>
@@ -313,8 +389,10 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
 
 /** Shared per request: the fixes the check found, and whether the business is already in good shape. */
 const standing = cache(async (place: Place, industry: IndustrySlug) => {
-  const [report, sig] = await Promise.all([aiReport(place, industry), readiness(place, industry)]);
-  const fixes = findFixes(place, report, sig.items);
+  const [report, sig, eng] = await Promise.all([aiReport(place, industry), readiness(place, industry), engineReadiness(place, industry)]);
+  // Google signals first, then the ChatGPT and website checks (each label once).
+  const all = [...sig.items, ...eng.bars.flatMap((b) => b.items)].filter((it, i, a) => a.findIndex((x) => x.label === it.label) === i);
+  const fixes = findFixes(place, report, all);
   const { pct } = visibility(report.answers);
   // In good shape: AI names them most of the time and Google basics are solid. Then the Autopilot leads.
   const strong = pct >= 50 && sig.score >= 80 && fixes.length <= 2;

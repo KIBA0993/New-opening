@@ -50,6 +50,7 @@ export interface EngineAnswer {
   mentionsYou: boolean;
   rivalsMentioned: string[]; // rival names
   excerpt: string;
+  sources?: string[]; // sites the engine read or cited (domains)
 }
 
 export type ListingState = "found" | "missing" | "different" | "unknown";
@@ -124,5 +125,11 @@ export interface LaunchKit {
   qa: { q: string; a: string }[];
   posts: { title: string; body: string }[];
   reviewRequest: { sms: string; email: string; inPerson: string };
+  // Added Nov 18, 2026 (what ChatGPT, Gemini and Perplexity read besides Google). Optional for older kits.
+  facts?: string[]; // credentials and specific, quotable facts, the same everywhere
+  priceMenu?: { item: string; price: string }[];
+  yelp?: { specialties: string; history: string };
+  servicePages?: { title: string; slug: string; body: string }[];
+  areaPage?: { title: string; slug: string; body: string };
   demo: boolean;
 }

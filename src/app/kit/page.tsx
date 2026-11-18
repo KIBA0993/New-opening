@@ -7,7 +7,8 @@ import { paidSession } from "@/lib/billing";
 import { has } from "@/lib/env";
 import { sendKitEmail } from "@/lib/fulfill";
 import { industryBySlug } from "@/lib/industries";
-import { writeKit } from "@/lib/kit";
+import { AI_ROBOTS, businessSchema, writeKit } from "@/lib/kit";
+import { directoriesFor } from "@/lib/directories";
 import { GUIDES } from "@/lib/platforms";
 import { reviewLink } from "@/lib/providers/places";
 import { KitView } from "./KitView";
@@ -48,6 +49,9 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       serviceArea={industry.serviceArea}
       storeKey={session_id}
       industryName={industry.name}
+      directories={directoriesFor(profile.industry)}
+      schema={businessSchema(profile, kit, industry.serviceArea)}
+      robots={AI_ROBOTS}
     />
     <div className="mx-auto max-w-3xl px-4 sm:px-6">
       <Suspense fallback={null}>

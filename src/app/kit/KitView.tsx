@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { useEffect, useMemo, useState } from "react";
 import { CopyBlock, CopyButton } from "@/components/CopyButton";
 import { DemoTag } from "@/components/ui";
+import type { Directory } from "@/lib/directories";
 import type { PlatformGuide } from "@/lib/platforms";
 import type { LaunchKit, OwnerProfile } from "@/lib/types";
 
@@ -15,12 +16,15 @@ interface Props {
   serviceArea: boolean;
   storeKey: string;
   industryName: string;
+  directories: Directory[];
+  schema: string;
+  robots: string;
 }
 
-const STEP_IDS = ["details", "google", "verify", "apple", "bing", "yelp", "facebook", "chatgpt", "reviews"] as const;
+const STEP_IDS = ["details", "facts", "google", "verify", "apple", "bing", "yelp", "facebook", "chatgpt", "directories", "website", "reviews"] as const;
 type StepId = (typeof STEP_IDS)[number];
 
-export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName }: Props) {
+export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots }: Props) {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [qr, setQr] = useState("");
   const key = `od_kit_${storeKey.slice(-24)}`;
@@ -97,7 +101,18 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={2} id="google" title={isNew ? "Create your Google profile" : claimFirst ? "Claim your Google profile, then fill it in" : "Fill in your Google profile"} done={done.google} onToggle={toggle}
+        <Step n={2} id="facts" title="Your proof: credentials, facts and prices" done={done.facts} onToggle={toggle}
+          intro="AI assistants recommend the business that proves it does the exact job, with specifics like licenses, areas and prices. Fill in the [brackets], then use the same facts on every listing and on your website.">
+          <div className="grid gap-3">
+            {kit.facts?.length ? <CopyBlock label="Fact sheet" text={kit.facts.join("\n")} hint="Fill in every [bracket]. Never claim a license or number you don't have." /> : null}
+            {kit.priceMenu?.length ? (
+              <CopyBlock label={industryName.toLowerCase().includes("restaurant") || industryName.toLowerCase().includes("food") ? "Menu with prices" : "Price list"} text={kit.priceMenu.map((x) => `${x.item}: ${x.price}`).join("\n")} hint="Put this on your website and in your Google services. Even 'from $X' lets AI answer 'how much' questions with your name." />
+            ) : null}
+            {!kit.facts?.length && !kit.priceMenu?.length ? <p className="text-ink-2">List your licenses, insurance, certifications and starting prices in one place, and use the same wording everywhere.</p> : null}
+          </div>
+        </Step>
+
+        <Step n={3} id="google" title={isNew ? "Create your Google profile" : claimFirst ? "Claim your Google profile, then fill it in" : "Fill in your Google profile"} done={done.google} onToggle={toggle}
           intro={guides[0].why}>
           {claimFirst && !isNew ? (
             <div className="mb-5 rounded-xl bg-warn-bg p-4 text-warn">
@@ -166,24 +181,79 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={3} id="verify" title="Pass Google's verification" done={done.verify} onToggle={toggle}
+        <Step n={4} id="verify" title="Pass Google's verification" done={done.verify} onToggle={toggle}
           intro="Google decides how to verify you: a video, a phone or text code, an email, or a postcard. Video is the most common now and the one people fail most.">
           <VerificationCoach serviceArea={serviceArea} industryName={industryName} />
         </Step>
 
         {guides.slice(1).map((g, i) => (
-          <Step key={g.platform} n={4 + i} id={g.platform as StepId} title={`Get on ${g.name}`} done={done[g.platform]} onToggle={toggle} intro={g.why}>
+          <Step key={g.platform} n={5 + i} id={g.platform as StepId} title={`Get on ${g.name}`} done={done[g.platform]} onToggle={toggle} intro={g.why}>
             <Guide guide={g} />
             <div className="mt-5 grid gap-3">
               {g.fields.map((f) => (
                 <CopyBlock key={f} label={fields[f].label} text={fields[f].value} hint={fields[f].hint} />
               ))}
+              {g.platform === "yelp" && kit.yelp ? (
+                <>
+                  <CopyBlock label="Specialties" text={kit.yelp.specialties} hint="Name every service in plain words. ChatGPT reads this field." />
+                  <CopyBlock label="History" text={kit.yelp.history} hint="Fill in any [brackets] with your own story." />
+                </>
+              ) : null}
             </div>
           </Step>
         ))}
 
-        <Step n={9} id="reviews" title="Get your first 10 reviews" done={done.reviews} onToggle={toggle}
-          intro="New businesses with a handful of recent reviews start showing up fast. Ask every happy customer, right after the visit.">
+        <Step n={5 + guides.length - 1} id="directories" title={`Get on your industry's directories`} done={done.directories} onToggle={toggle}
+          intro={`ChatGPT cites directories and "best of" lists in most local answers. These are the ones that matter for ${industryName.toLowerCase()}. Use the same details and fact sheet on each.`}>
+          <ul className="grid gap-3">
+            {directories.map((d) => (
+              <li key={d.name} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                <span className="min-w-0">
+                  <span className="block font-semibold">{d.name}</span>
+                  <span className="text-[0.95rem] text-ink-2">{d.why}</span>
+                </span>
+                <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !min-h-[44px]">Open {d.name} ↗</a>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 grid gap-3">
+            <CopyBlock label="Short description for directories" text={kit.shortDescription} />
+            <CopyBlock label="Services" text={fields.services.value} />
+          </div>
+        </Step>
+
+        <Step n={6 + guides.length - 1} id="website" title="Make your website easy for AI to quote" done={done.website} onToggle={toggle}
+          intro="Gemini and Perplexity cite business websites in about 9 of 10 local answers. A page per service is what wins specific questions, even against bigger rivals. Send this step to whoever runs your site, or paste it into your site builder.">
+          <div className="grid gap-3">
+            {kit.servicePages?.length ? (
+              <div className="card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold">One page per service</p>
+                  <CopyButton text={kit.servicePages.map((x) => `${x.title}\n/${x.slug}\n\n${x.body}`).join("\n\n---\n\n")} label="Copy all" />
+                </div>
+                <p className="text-[0.85rem] text-ink-3">Use the title as the page heading and the address shown as the page link. Fill in the [brackets].</p>
+                <ul className="mt-3 space-y-3">
+                  {kit.servicePages.map((x) => (
+                    <li key={x.slug} className="border-t border-line pt-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-semibold">{x.title} <span className="font-normal text-ink-3">/{x.slug}</span></p>
+                        <CopyButton text={`${x.title}\n\n${x.body}`} />
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap text-ink-2">{x.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {kit.areaPage ? <CopyBlock label={`Areas page: ${kit.areaPage.title} (/${kit.areaPage.slug})`} text={kit.areaPage.body} /> : null}
+            <CopyBlock label="FAQ page" text={kit.qa.map((x) => `${x.q}\n${x.a}`).join("\n\n")} hint="The same questions as your Google profile, as one page on your site." />
+            <CopyBlock label="Business schema (paste into your site's <head>)" text={schema} hint="Tells AI your name, phone, area and services without guessing. Most site builders have a 'custom code' or 'header code' box." />
+            <CopyBlock label="robots.txt lines for AI search" text={robots} hint="Add these to your robots.txt so ChatGPT, Perplexity, Gemini and Claude can read and cite your site." />
+          </div>
+        </Step>
+
+        <Step n={7 + guides.length - 1} id="reviews" title="Get your first 10 reviews" done={done.reviews} onToggle={toggle}
+          intro="New businesses with a handful of recent reviews start showing up fast. Ask every happy customer, right after the visit, and ask them to mention the service and their neighborhood: AI picks the business whose reviews prove it does the exact job.">
           {reviewUrl.includes("YOUR_PLACE_ID") ? (
             <p className="mb-3 rounded-xl bg-warn-bg p-4 text-warn">
               Your review link works once your Google profile is live. In your Business Profile, tap &ldquo;Ask for reviews&rdquo; to get your own short link, and use it in the messages below.

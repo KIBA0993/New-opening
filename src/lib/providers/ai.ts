@@ -40,7 +40,7 @@ export function engineNames(): string {
 const ASK_SYSTEM =
   "You are a helpful assistant answering a local search question. Recommend specific businesses by name, like you normally would for a consumer.";
 
-async function askOpenAI(prompt: string): Promise<string> {
+async function askOpenAI(prompt: string): Promise<Answer> {
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.openai}`, "Content-Type": "application/json" },
@@ -52,16 +52,17 @@ async function askOpenAI(prompt: string): Promise<string> {
     }),
   });
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
-  const data = (await res.json()) as { output_text?: string; output?: { type: string; content?: { type: string; text?: string }[] }[] };
-  if (data.output_text) return data.output_text;
-  return (data.output || [])
-    .flatMap((o) => o.content || [])
-    .filter((c) => c.type === "output_text")
-    .map((c) => c.text || "")
-    .join("\n");
+  const data = (await res.json()) as { output_text?: string; output?: { type: string; content?: { type: string; text?: string; annotations?: { url?: string }[] }[] }[] };
+  const parts = (data.output || []).flatMap((o) => o.content || []).filter((c) => c.type === "output_text");
+  const text = data.output_text || parts.map((c) => c.text || "").join("\n");
+  return { text, sources: parts.flatMap((c) => (c.annotations || []).map((a) => a.url || "")) };
 }
 
 async function askPerplexity(prompt: string, system = ASK_SYSTEM): Promise<string> {
+  return (await askPerplexityFull(prompt, system)).text;
+}
+
+async function askPerplexityFull(prompt: string, system = ASK_SYSTEM): Promise<Answer> {
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.perplexity}`, "Content-Type": "application/json" },
@@ -74,11 +75,11 @@ async function askPerplexity(prompt: string, system = ASK_SYSTEM): Promise<strin
     }),
   });
   if (!res.ok) throw new Error(`Perplexity ${res.status}: ${await res.text()}`);
-  const data = (await res.json()) as { choices: { message: { content: string } }[] };
-  return data.choices?.[0]?.message?.content || "";
+  const data = (await res.json()) as { choices: { message: { content: string } }[]; citations?: string[]; search_results?: { url?: string }[] };
+  return { text: data.choices?.[0]?.message?.content || "", sources: data.citations || (data.search_results || []).map((r) => r.url || "") };
 }
 
-async function askGemini(prompt: string): Promise<string> {
+async function askGemini(prompt: string): Promise<Answer> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiModel}:generateContent`;
   const res = await fetch(url, {
     method: "POST",
@@ -90,16 +91,41 @@ async function askGemini(prompt: string): Promise<string> {
     }),
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-  const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] }; groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] } }[] };
+  const c = data.candidates?.[0];
+  // Gemini's links are Google redirects; the chunk title is the site's domain.
+  const sources = (c?.groundingMetadata?.groundingChunks || []).map((g) => (g.web?.title ? `https://${g.web.title}` : g.web?.uri || ""));
+  return { text: (c?.content?.parts || []).map((p) => p.text || "").join(""), sources };
+}
+
+export interface Answer {
+  text: string;
+  sources: string[]; // sites the engine read or cited, as bare domains
+}
+
+/** Bare domains, deduplicated, in the order the engine used them. */
+export function domainsOf(urls: string[]): string[] {
+  const out: string[] = [];
+  for (const u of urls) {
+    try {
+      const d = new URL(u).hostname.replace(/^(www|m)\./, "");
+      if (d && !d.endsWith("vertexaisearch.cloud.google.com") && !out.includes(d)) out.push(d);
+    } catch {
+      /* skip */
+    }
+  }
+  return out.slice(0, 8);
+}
+
+/** Ask an engine like a customer would: the answer text plus the sites it read. */
+export async function askEngineFull(engine: Engine, prompt: string, city?: string): Promise<Answer> {
+  await spend("ai");
+  const a = engine === "chatgpt" ? await askOpenAI(prompt) : engine === "claude" ? await askClaude(prompt, city) : engine === "perplexity" ? await askPerplexityFull(prompt) : await askGemini(prompt);
+  return { text: a.text, sources: domainsOf(a.sources) };
 }
 
 export async function askEngine(engine: Engine, prompt: string, city?: string): Promise<string> {
-  await spend("ai");
-  if (engine === "chatgpt") return askOpenAI(prompt);
-  if (engine === "claude") return askClaude(prompt, city);
-  if (engine === "perplexity") return askPerplexity(prompt);
-  return askGemini(prompt);
+  return (await askEngineFull(engine, prompt, city)).text;
 }
 
 /**
@@ -114,8 +140,8 @@ export const cachedAsk = unstable_cache(
 
 /** The free check keeps answers 3 days (they change slowly). The weekly digest uses the 1-day cache above. */
 export const cachedAskFree = unstable_cache(
-  async (engine: Engine, prompt: string, city?: string) => askEngine(engine, prompt, city),
-  ["ask-free-v1"],
+  async (engine: Engine, prompt: string, city?: string) => askEngineFull(engine, prompt, city),
+  ["ask-free-v2"],
   { revalidate: 60 * 60 * 24 * 3 },
 );
 
@@ -180,7 +206,7 @@ export async function searchJSON<T>(prompt: string, city?: string): Promise<T | 
   let text = "";
   try {
     if (has.perplexity()) text = await askPerplexity(prompt, instr);
-    else if (has.openai()) text = await askOpenAI(`${instr}\n\n${prompt}`);
+    else if (has.openai()) text = (await askOpenAI(`${instr}\n\n${prompt}`)).text;
     else return null;
   } catch (e) {
     console.error("searchJSON failed", e);

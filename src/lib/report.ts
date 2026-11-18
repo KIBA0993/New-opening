@@ -4,9 +4,10 @@ import { cache } from "react";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
-import { askEngine, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
+import { askEngineFull, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
 import { directoriesSafe, type DirectoryHit } from "./providers/listings";
-import { nearbyPhotos, profileFacts, websiteMatches, type ProfileFacts } from "./providers/profile";
+import { nearbyPhotos, profileFacts, siteFacts, websiteMatches, type ProfileFacts, type SiteFacts } from "./providers/profile";
+import { directoriesFor } from "./directories";
 import { reviewFreshness, type ReviewFreshness } from "./providers/places";
 import { findRivals } from "./providers/places";
 import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
@@ -150,21 +151,144 @@ export const readiness = cache(async (place: Place, industrySlug: IndustrySlug) 
   return { ...signals(place, rivals, { profile: facts, fresh, rivalPhotos, site }), demo };
 });
 
+// ---------- 1b) Readiness per assistant ----------
+// Each assistant reads different sources (research, Nov 2026): ChatGPT leans on Yelp and industry
+// directories, Google's AI on the Google profile, Gemini and Perplexity on the business's own website.
+// So one Google-only number misses most of what ChatGPT reads. Three bars, one per kind of assistant.
+
+export type BarKey = "google" | "chatgpt" | "web";
+export interface Bar {
+  key: BarKey;
+  label: string;
+  sub: string;
+  score: number;
+  items: Signal[];
+}
+
+// Words that show a review talks about a specific service, by industry (stems).
+const SERVICE_WORDS: Record<IndustrySlug, string[]> = {
+  "home-services": ["clean", "repair", "install", "replac", "fix", "leak", "drain", "roof", "paint", "lawn", "mow", "pest", "move", "moving", "hvac", "furnace", "ac ", "water heater", "toilet", "outlet", "wiring", "window", "gutter", "carpet", "tree", "deck", "fence", "estimate"],
+  beauty: ["cut", "color", "balayage", "highlight", "blowout", "fade", "beard", "nail", "manicure", "pedicure", "gel", "acrylic", "lash", "brow", "wax", "facial", "makeup", "extension", "braid", "perm"],
+  "food-trucks": ["taco", "burger", "burrito", "bbq", "sandwich", "pizza", "fries", "wings", "dessert", "coffee", "cater", "event", "wedding", "menu"],
+  pet: ["groom", "bath", "nail", "trim", "haircut", "walk", "board", "daycare", "sit", "train", "puppy", "vet", "vaccine"],
+  wellness: ["massage", "deep tissue", "facial", "acupunct", "chiropract", "adjust", "yoga", "pilates", "class", "therapy", "stretch", "sauna", "skin", "physical therapy"],
+  restaurants: ["pasta", "pizza", "steak", "sushi", "taco", "burger", "brunch", "dessert", "cocktail", "wine", "dish", "menu", "appetizer", "salad", "soup", "special"],
+};
+
+function reviewsNameServices(texts: string[] | undefined, industry: IndustrySlug, term: string) {
+  if (!texts?.length) return null;
+  const words = [...SERVICE_WORDS[industry], ...term.toLowerCase().split(/\s+/).filter((w) => w.length > 3).map((w) => w.slice(0, 5))];
+  const hits = texts.filter((t) => words.some((w) => t.toLowerCase().includes(w))).length;
+  return { hits, total: texts.length };
+}
+
+function score(rows: { label: string; weight: number; points: number | null; note: string }[]): { items: Signal[]; score: number } {
+  const counted = rows.filter((r) => r.points != null).map((r) => ({ ...r, points: clamp(r.points as number) }));
+  const total = counted.reduce((n, r) => n + r.weight, 0);
+  const got = counted.reduce((n, r) => n + r.weight * r.points, 0);
+  const items: Signal[] = counted.map((r) => ({ label: r.label, note: r.note, light: r.points >= 0.85 ? "green" : r.points >= 0.5 ? "yellow" : "red" }));
+  return { items, score: total ? Math.round((got / total) * 100) : 0 };
+}
+
+/** Three readiness bars, one per kind of assistant, plus a blended headline. Needs the listings, so it streams in. */
+export const engineReadiness = cache(async (place: Place, industrySlug: IndustrySlug) => {
+  const { term } = checkContext(place, industrySlug);
+  const [base, report, site, fresh] = await Promise.all([readiness(place, industrySlug), aiReport(place, industrySlug), siteFacts(place), reviewFreshness(place.id)]);
+  const lightPoints = (label: string) => {
+    const it = base.items.find((i) => i.label === label);
+    return it ? (it.light === "green" ? 1 : it.light === "yellow" ? 0.6 : 0.15) : null;
+  };
+  const yelp = report.listings.find((l) => l.platform === "yelp");
+  const dirs = report.directories;
+  const named = reviewsNameServices(fresh?.texts, industrySlug, term);
+  const s: SiteFacts | null = site;
+
+  const reviewRow = {
+    label: "Reviews that name your services",
+    weight: 1.5,
+    points: named ? named.hits / Math.max(2, Math.ceil(named.total * 0.6)) : null,
+    note: named
+      ? `${named.hits} of the ${named.total} reviews Google shows mention a specific service. AI picks the business whose reviews prove it does the exact job asked about.`
+      : "",
+  };
+
+  const chatgpt = score([
+    {
+      label: "Yelp listing",
+      weight: 2.5,
+      points: yelp?.state === "found" ? 1 : yelp?.state === "different" ? 0.6 : yelp?.state === "missing" ? 0 : 0.35,
+      note:
+        yelp?.state === "found" ? "Found. Yelp supplies most of ChatGPT's business cards." : yelp?.state === "missing" ? "No Yelp page found. ChatGPT gets most of its local business details from Yelp." : "We couldn't confirm a Yelp page. ChatGPT gets most of its local business details from Yelp, so check yours.",
+    },
+    {
+      label: "Industry directories",
+      weight: 2,
+      points: dirs ? Math.min(1, dirs.found.length / 2) : null,
+      note: dirs
+        ? dirs.found.length
+          ? `Found on ${dirs.found.join(" and ")}. ${dirs.missing.length ? `Also get on ${dirs.missing.slice(0, 2).join(" and ")}.` : ""}`.trim()
+          : `We didn't see you on ${dirs.missing.slice(0, 3).join(", ")}. ChatGPT cites directories like these in most local answers.`
+        : "",
+    },
+    { label: "Reviews vs. nearby rivals", weight: 2, points: lightPoints("Reviews vs. nearby rivals"), note: "ChatGPT favors the business with more reviews than its neighbors." },
+    reviewRow,
+    {
+      label: "Website open to ChatGPT",
+      weight: 1,
+      points: s?.blocked ? (s.blocked.chatgpt ? 0 : 1) : null,
+      note: s?.blocked?.chatgpt ? "Your robots.txt blocks OAI-SearchBot, so ChatGPT can't read or cite your site." : "ChatGPT's search crawler can read your site.",
+    },
+  ]);
+
+  const web = score([
+    { label: "Website", weight: 2, points: place.website ? 1 : 0, note: place.website ? "Listed on Google." : "No website. Gemini and Perplexity cite business websites in about 9 of 10 local answers." },
+    {
+      label: "A page for each service",
+      weight: 2,
+      points: s ? Math.min(1, s.servicePages / 3) : null,
+      note: s
+        ? s.servicePages >= 3
+          ? `About ${s.servicePages} service pages found.`
+          : `${s.servicePages ? `Only ${s.servicePages} service ${s.servicePages === 1 ? "page" : "pages"} found.` : "No service pages found."} AI assistants pick the business that proves it offers the exact service asked about, and a smaller business with a service page beats a bigger one without.`
+        : "",
+    },
+    { label: "Prices on your site", weight: 1, points: s ? (s.prices ? 1 : 0.2) : null, note: s?.prices ? "Your site shows prices." : "No prices found. Even \"from $X\" helps AI answer \"how much\" questions with your name." },
+    { label: "Licenses and credentials shown", weight: 1, points: s ? (s.credentials ? 1 : 0.2) : null, note: s?.credentials ? "Your site mentions licenses, insurance or certifications." : "No license, insurance or certification found. AI repeats specific proof like this." },
+    { label: "Page for your city or areas", weight: 1, points: s ? (s.areaPage ? 1 : 0.3) : null, note: s?.areaPage ? "Found a page for the areas you serve." : "No page for your city or service areas. Service-plus-city pages are often what AI cites." },
+    { label: "Business details in code (schema)", weight: 0.75, points: s ? (s.schema ? 1 : 0.2) : null, note: s?.schema ? "Your site has LocalBusiness schema." : "No LocalBusiness schema. It tells AI your name, hours and area without guessing." },
+    {
+      label: "Website open to AI search",
+      weight: 1,
+      points: s?.blocked ? (s.blocked.perplexity || s.blocked.gemini ? 0 : 1) : null,
+      note: s?.blocked && (s.blocked.perplexity || s.blocked.gemini) ? `Your robots.txt blocks ${[s.blocked.perplexity && "PerplexityBot", s.blocked.gemini && "Google-Extended"].filter(Boolean).join(" and ")}.` : "AI search crawlers can read your site.",
+    },
+    { label: "Website matches Google", weight: 1, points: lightPoints("Website matches Google"), note: "Same name and phone on your site and on Google." },
+  ]);
+
+  const bars: Bar[] = [
+    { key: "chatgpt", label: "ChatGPT", sub: "Reads Yelp, industry directories and reviews", ...chatgpt },
+    { key: "google", label: "Google AI", sub: "Reads your Google profile", score: base.score, items: [] },
+    { key: "web", label: "Gemini and Perplexity", sub: "Read your own website", ...web },
+  ];
+  const overall = Math.round(bars[0].score * 0.35 + bars[1].score * 0.4 + bars[2].score * 0.25);
+  return { bars, overall, demo: base.demo || report.demo };
+});
+
 // ---------- 2) Real AI answers, cached by question ----------
 
 async function runAnswers(placeName: string, rivalNames: string[], prompts: string[], area: string, fresh = false): Promise<{ answers: EngineAnswer[]; demo: boolean }> {
   const { engines, demo } = checkEngines();
   if (demo) return { answers: mockAnswers(placeName, rivalNames, prompts, engines, fresh), demo: true };
-  const perEngine = Math.max(1, Math.ceil(FREE_QUESTIONS / engines.length));
-  const ask = fresh ? askEngine : cachedAskFree;
-  const jobs = engines.flatMap((engine) => prompts.slice(0, perEngine).map((prompt) => ({ engine, prompt })));
+  const ask = fresh ? askEngineFull : cachedAskFree;
+  // Every kind of question gets asked: with one engine it asks all three, with more they take turns.
+  const jobs = Array.from({ length: Math.max(FREE_QUESTIONS, engines.length) }, (_, i) => ({ engine: engines[i % engines.length], prompt: prompts[i % prompts.length] }));
   const answers = await Promise.all(
     jobs.map(async ({ engine, prompt }): Promise<EngineAnswer | null> => {
       try {
-        const text = await ask(engine, prompt, area);
+        const { text, sources } = await ask(engine, prompt, area);
         const mentionsYou = mentions(text, placeName);
         const named = rivalNames.filter((r) => mentions(text, r));
-        return { engine, prompt, mentionsYou, rivalsMentioned: named, excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || "") };
+        return { engine, prompt, mentionsYou, rivalsMentioned: named, excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || ""), sources };
       } catch (e) {
         console.error("engine failed", engine, e);
         return null;
@@ -187,6 +311,7 @@ function mockAnswers(placeName: string, rivalNames: string[], prompts: string[],
       mentionsYou,
       rivalsMentioned,
       excerpt: `Here are a few well-reviewed options: ${rivalsMentioned.join(", ")}${mentionsYou ? `, and ${placeName}, which opened recently` : ""}.`,
+      sources: ["yelp.com", "google.com", "facebook.com"].slice(0, 2 + (i % 2)),
     };
   });
 }
@@ -276,9 +401,11 @@ const CHECK_YOURSELF: ListingCheck[] = [
   { platform: "bing", state: "unknown", note: "Search your name at bing.com/maps to check. Bing feeds ChatGPT's search, so it's worth a look." },
 ];
 
-async function directoryListings(place: Place, isNew: boolean, rivals: Place[], area: string) {
+async function directoryListings(place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) {
   const all = [place, ...rivals];
-  const hits: DirectoryHit[] = await Promise.all(all.map((b) => directoriesSafe(b.name, b.address || area, b === place && isNew ? undefined : b.id)));
+  const dirs = directoriesFor(industry);
+  const domains = dirs.map((d) => d.domain);
+  const hits: DirectoryHit[] = await Promise.all(all.map((b) => directoriesSafe(b.name, b.address || area, b === place && isNew ? undefined : b.id, domains)));
   const [mine, ...theirs] = hits;
 
   const listings: ListingCheck[] = [
@@ -296,7 +423,8 @@ async function directoryListings(place: Place, isNew: boolean, rivals: Place[], 
   ];
   // Apple and Bing stay null ("couldn't check") for rivals too.
   const profiles = Object.fromEntries(rivals.map((r, i) => [r.name, { google: true, yelp: theirs[i].yelp, apple: null, bing: null, facebook: theirs[i].facebook }]));
-  return { listings, demo: false, profiles };
+  const directories = mine.others ? { found: dirs.filter((d) => mine.others!.includes(d.domain)).map((d) => d.name), missing: dirs.filter((d) => !mine.others!.includes(d.domain)).map((d) => d.name) } : null;
+  return { listings, demo: false, profiles, directories };
 }
 
 const cachedListings = unstable_cache(
@@ -310,8 +438,8 @@ const cachedListings = unstable_cache(
 );
 
 // Keyed by ids only, so small changes in Google's data (a new review) don't trigger new paid searches.
-const cachedDirectoryListings = (place: Place, isNew: boolean, rivals: Place[], area: string) =>
-  unstable_cache(() => directoryListings(place, isNew, rivals, area), ["listings-dfs-v1", place.id, place.name, rivals.map((r) => r.id).join(",")], {
+const cachedDirectoryListings = (place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) =>
+  unstable_cache(() => directoryListings(place, isNew, rivals, area, industry), ["listings-dfs-v2", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
     revalidate: 60 * 60 * 24 * 7, // listings change slowly: a week
   })();
 
@@ -323,8 +451,8 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   const [ans, lst] = await Promise.all([
     runAnswers(place.name, rivalPlaces.map((r) => r.name), prompts, area),
     has.dataforseo() && !place.id.startsWith("demo_")
-      ? cachedDirectoryListings(place, isNew, rivalPlaces, area)
-      : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area),
+      ? cachedDirectoryListings(place, isNew, rivalPlaces, area, industrySlug)
+      : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area).then((x) => ({ ...x, directories: null })),
   ]);
   const rivals: Rival[] = rivalPlaces.map((r) => ({
     ...r,
@@ -334,6 +462,7 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   return {
     answers: ans.answers,
     listings: lst.listings,
+    directories: lst.directories as { found: string[]; missing: string[] } | null,
     rivals,
     demo: ans.demo || lst.demo || rivalsDemo || place.id.startsWith("demo_"),
   };
@@ -425,6 +554,15 @@ const FIX_TITLE: Record<string, string> = {
   "Reviews vs. nearby rivals": "Get more reviews than your rivals",
   "Recent reviews": "Get fresh reviews this month",
   Rating: "Lift your rating with reviews from happy customers",
+  "Industry directories": "Get listed on your industry's directories",
+  "Reviews that name your services": "Get reviews that mention the exact service",
+  "Website open to ChatGPT": "Let ChatGPT read your website",
+  "A page for each service": "Add a page for each service on your site",
+  "Prices on your site": "Show prices on your website",
+  "Licenses and credentials shown": "Show your licenses and credentials",
+  "Page for your city or areas": "Add a page for the areas you serve",
+  "Business details in code (schema)": "Add business schema to your website",
+  "Website open to AI search": "Let AI search crawlers read your site",
 };
 
 export function findFixes(place: Place, report: { answers: EngineAnswer[]; listings: ListingCheck[]; rivals: Rival[] }, sig: Signal[]): Fix[] {

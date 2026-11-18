@@ -305,6 +305,7 @@ export async function latestReviews(placeId: string): Promise<{ author: string; 
 export interface ReviewFreshness {
   newestDays: number | null; // age of the newest review Google shows, in days
   last30: number; // of the reviews Google shows (up to 5), how many are from the last 30 days
+  texts?: string[]; // the review texts Google shows (up to 5)
 }
 
 export function reviewFreshness(placeId: string): Promise<ReviewFreshness | null> {
@@ -313,15 +314,16 @@ export function reviewFreshness(placeId: string): Promise<ReviewFreshness | null
     async () => {
       await spend("places");
       const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
-        headers: { "X-Goog-Api-Key": env.googlePlaces, "X-Goog-FieldMask": "reviews.publishTime" },
+        headers: { "X-Goog-Api-Key": env.googlePlaces, "X-Goog-FieldMask": "reviews.publishTime,reviews.text" },
         cache: "no-store",
       });
       if (!res.ok) throw new Error(`reviews ${res.status}`);
-      const data = (await res.json()) as { reviews?: { publishTime?: string }[] };
+      const data = (await res.json()) as { reviews?: { publishTime?: string; text?: { text?: string } }[] };
       const ages = (data.reviews || []).map((r) => (r.publishTime ? (Date.now() - new Date(r.publishTime).getTime()) / 864e5 : Infinity)).filter(Number.isFinite);
-      return { newestDays: ages.length ? Math.floor(Math.min(...ages)) : null, last30: ages.filter((a) => a <= 30).length };
+      const texts = (data.reviews || []).map((r) => r.text?.text || "").filter(Boolean);
+      return { newestDays: ages.length ? Math.floor(Math.min(...ages)) : null, last30: ages.filter((a) => a <= 30).length, texts };
     },
-    ["review-fresh-v1", placeId],
+    ["review-fresh-v2", placeId],
     { revalidate: HOLD },
   )().catch(() => null);
 }

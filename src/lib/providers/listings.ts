@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "../env";
 import { spend, SpendCapError } from "../guard";
-import { sameBrand } from "./ai";
+import { mentions, sameBrand } from "./ai";
 
 // Directory check through Google's own business panel, via DataForSEO search results.
 // One search per business ("<name> <address>", $0.002). When the panel on the right is that
@@ -13,6 +13,8 @@ import { sameBrand } from "./ai";
 export interface DirectoryHit {
   yelp: boolean | null;
   facebook: boolean | null;
+  /** Industry directory domains seen with this business's page in the top 10 results; null when the search failed. */
+  others: string[] | null;
 }
 
 interface Node {
@@ -20,6 +22,7 @@ interface Node {
   title?: string;
   website_name?: string;
   breadcrumb?: string;
+  domain?: string;
   place_id?: string;
   items?: Node[];
 }
@@ -60,8 +63,15 @@ function yelpPage(i: Node, name: string) {
   return sameBrand((i.title || "").split(/ - | \| /)[0], name);
 }
 
-/** Yelp and Facebook for one business. Throws when the search fails. */
-export async function directories(name: string, address: string, placeId?: string): Promise<DirectoryHit> {
+// Any other directory page about this business (Angi, BBB, Tripadvisor...): same site, title names the business.
+function directoryPage(i: Node, name: string, domain: string) {
+  if (i.type !== "organic") return false;
+  const where = `${i.domain || ""} ${i.website_name || ""} ${i.breadcrumb || ""}`.toLowerCase();
+  return where.includes(domain.toLowerCase()) && mentions(i.title || "", name);
+}
+
+/** Yelp, Facebook and the given industry directories for one business. Throws when the search fails. */
+export async function directories(name: string, address: string, placeId?: string, domains: string[] = []): Promise<DirectoryHit> {
   const items = await search(`${name} ${address}`.replace(/\s+/g, " ").trim());
   const panel = items.find((i) => i.type === "knowledge_graph");
   const panelPlace = items.find((i) => i.type === "google_reviews")?.place_id;
@@ -71,15 +81,16 @@ export async function directories(name: string, address: string, placeId?: strin
   return {
     yelp: links.includes("yelp") || items.some((i) => yelpPage(i, name)) ? true : null,
     facebook: ours ? links.includes("facebook") : null,
+    others: domains.filter((d) => items.some((i) => directoryPage(i, name, d)) || links.some((l) => l.length > 3 && d.startsWith(l.replace(/\s+/g, "")))),
   };
 }
 
 /** Same, but "can't tell" for both instead of throwing, so one failed search never breaks a report. */
-export async function directoriesSafe(name: string, address: string, placeId?: string): Promise<DirectoryHit> {
+export async function directoriesSafe(name: string, address: string, placeId?: string, domains: string[] = []): Promise<DirectoryHit> {
   try {
-    return await directories(name, address, placeId);
+    return await directories(name, address, placeId, domains);
   } catch (e) {
     if (!(e instanceof SpendCapError)) console.error("listings search", name, e);
-    return { yelp: null, facebook: null };
+    return { yelp: null, facebook: null, others: null };
   }
 }

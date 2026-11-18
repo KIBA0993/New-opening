@@ -33,10 +33,27 @@ function textOf(content: Anthropic.Beta.BetaContentBlock[]) {
     .join("");
 }
 
+/** The pages an answer cited, or failing that, the pages its searches returned. */
+function sourcesOf(content: Anthropic.Beta.BetaContentBlock[]): { cited: string[]; seen: string[] } {
+  const cited: string[] = [];
+  const seen: string[] = [];
+  for (const b of content) {
+    if (b.type === "text") for (const c of b.citations || []) if ("url" in c && c.url) cited.push(c.url);
+    if (b.type === "web_search_tool_result" && Array.isArray(b.content)) for (const r of b.content) if (r.url) seen.push(r.url);
+  }
+  return { cited, seen };
+}
+
 /** One web-searching request, resuming if the server-side search loop pauses. */
 async function searchTurn(system: string, prompt: string, city?: string): Promise<string> {
+  return (await searchTurnFull(system, prompt, city)).text;
+}
+
+async function searchTurnFull(system: string, prompt: string, city?: string): Promise<{ text: string; sources: string[] }> {
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
   let text = "";
+  const cited: string[] = [];
+  const seen: string[] = [];
   for (let i = 0; i < 3; i++) {
     const res = await client().beta.messages.create({
       ...FALLBACK,
@@ -48,15 +65,18 @@ async function searchTurn(system: string, prompt: string, city?: string): Promis
       messages,
     });
     text += textOf(res.content);
+    const src = sourcesOf(res.content);
+    cited.push(...src.cited);
+    seen.push(...src.seen);
     if (res.stop_reason !== "pause_turn") break;
     messages.splice(1, messages.length - 1, { role: "assistant", content: res.content });
   }
-  return text;
+  return { text, sources: cited.length ? cited : seen };
 }
 
-/** Ask Claude a local question the way a customer would. */
+/** Ask Claude a local question the way a customer would. Returns the answer and the pages it read. */
 export function askClaude(prompt: string, city?: string) {
-  return searchTurn(
+  return searchTurnFull(
     "You are a helpful assistant answering a local search question. Search the web, then recommend specific businesses by name, like you normally would for a consumer.",
     prompt,
     city,

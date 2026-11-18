@@ -11,7 +11,7 @@ export interface Industry {
   hero: { title: string; sub: string };
   pains: { title: string; body: string }[];
   kitExtras: string[];
-  promptTemplates: string[]; // {term} and {area}
+  promptTemplates: string[]; // {term} and {area}: [generic, a specific service, a customer need]
   campaigns: { title: string; idea: string }[];
   eventKinds: string[];
   servicesPlaceholder: string;
@@ -39,7 +39,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "No time for marketing", body: "You're on jobs all day. Everything we write has a copy button, and the weekly email takes five minutes." },
     ],
     kitExtras: ["Service-area setup (hide your home address the right way)", "Truck and tools video shot list", "Before and after post templates"],
-    promptTemplates: ["best {term} in {area}", "who should I hire as a {term} near {area}?", "affordable reliable {term} {area}"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} that gives free estimates and is licensed and insured", "I need a {term} in {area} who can come this week. Who should I call?"],
     campaigns: [
       { title: "Winter prep checklist", idea: "Post a 5-point winter checklist for local homes, with a small discount for bookings this month." },
       { title: "Neighbor referral", idea: "Offer $20 off for both the customer and any neighbor they refer on the same street." },
@@ -72,7 +72,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "Reviews feel awkward to ask for", body: "We give you a QR code for your mirror and a text you can send after each visit." },
     ],
     kitExtras: ["Works with your booking link", "Mirror and front-desk QR card", "Service menu written for Google"],
-    promptTemplates: ["best {term} in {area}", "{term} near {area} with good reviews", "where to get {term} services in {area}"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} that takes walk-ins or same-day appointments", "I want a {term} in {area} with great reviews and fair prices. Where should I book?"],
     campaigns: [
       { title: "Holiday glam week", idea: "Offer a party-ready add-on for December bookings and post your open slots every Monday." },
       { title: "Bring a friend", idea: "Book together and both get a free add-on. Great for filling weekday afternoons." },
@@ -105,7 +105,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "Holiday season moves fast", body: "December markets fill up early. You'll hear about them before the spots are gone." },
     ],
     kitExtras: ["Weekly vendor calls and markets near you", "Menu written for Google and Yelp", "'Where we are this week' post templates"],
-    promptTemplates: ["best {term} in {area}", "{term}s near {area} this week", "where to find good street food in {area}"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} that caters private events", "where can I find good street food in {area} this week?"],
     campaigns: [
       { title: "Where we are this week", idea: "Post your weekly schedule every Monday on Google, Instagram and Facebook." },
       { title: "Holiday market menu", idea: "Add one warm seasonal item and name it after the market you're at." },
@@ -138,7 +138,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "Mobile or shop, it's confusing", body: "We set up the right kind of profile, whether clients come to you or you go to them." },
     ],
     kitExtras: ["Mobile or storefront setup", "Review cards for pickup time", "Seasonal care post ideas"],
-    promptTemplates: ["best {term} in {area}", "{term} near {area} with good reviews", "who is a good {term} in {area}?"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} that is good with nervous or large dogs", "I just got a puppy and live in {area}. Which {term} would you recommend?"],
     campaigns: [
       { title: "Holiday photo day", idea: "Offer a festive bandana and a free photo with every December groom." },
       { title: "New puppy package", idea: "Bundle the first three visits for new puppy owners and post it on Google." },
@@ -171,7 +171,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "AI answers are new and unclear", body: "We show you exactly what AI assistants say when people ask for your kind of practice." },
     ],
     kitExtras: ["Services written in plain language", "Insurance and booking info on every profile", "Patient review request templates"],
-    promptTemplates: ["best {term} in {area}", "{term} near {area} accepting new patients", "recommended {term} in {area}"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} accepting new clients this week", "I have a sore back and live in {area}. Which {term} should I go to?"],
     campaigns: [
       { title: "New year, new routine", idea: "Offer a first-visit special for January and post it in late December." },
       { title: "Desk worker week", idea: "Partner with a nearby office for a short talk or demo." },
@@ -204,7 +204,7 @@ export const INDUSTRIES: Industry[] = [
       { title: "Holidays sneak up", body: "Every week you get one ready-to-post campaign tied to the season and what's happening nearby." },
     ],
     kitExtras: ["Menu highlights written for Google and Yelp", "Holiday hours checklist", "Table-tent review QR card"],
-    promptTemplates: ["best new {term} in {area}", "where to eat in {area}", "good {term} near {area} for dinner"],
+    promptTemplates: ["best {term} in {area}", "{term} in {area} with takeout or delivery", "where should I go for a nice dinner in {area} tonight?"],
     campaigns: [
       { title: "Holiday party bookings", idea: "Post a simple group menu for December parties with a reservation link." },
       { title: "Neighborhood night", idea: "One weeknight discount for people who live or work nearby." },
@@ -244,6 +244,14 @@ export function searchTerm(industry: Industry, primaryTypeLabel?: string): strin
   return industry.term;
 }
 
-export function buildPrompts(industry: Industry, term: string, area: string): string[] {
-  return industry.promptTemplates.map((t) => t.replaceAll("{term}", term).replaceAll("{area}", area));
+/**
+ * Three questions, each a different kind (research, Nov 2026): a generic "best X", a specific service,
+ * and a customer need. On the specific ones, AI picks the business that proves it does that exact job.
+ * When we know the owner's own services, the service question uses their first one.
+ */
+export function buildPrompts(industry: Industry, term: string, area: string, service?: string): string[] {
+  const out = industry.promptTemplates.map((t) => t.replaceAll("{term}", term).replaceAll("{area}", area));
+  const svc = service?.split(/[,\n;]+/)[0]?.trim();
+  if (svc && svc.length < 60) out[1] = `who does ${svc.toLowerCase()} in ${area}?`;
+  return out;
 }
