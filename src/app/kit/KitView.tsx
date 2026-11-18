@@ -289,7 +289,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           <div className="mt-3 grid gap-3">
             <CopyBlock label="Text message" text={fill(kit.reviewRequest.sms)} />
             <CopyBlock label="Email" text={fill(kit.reviewRequest.email)} />
-            <CopyBlock label="What to say in person" text={kit.reviewRequest.inPerson} />
+            <CopyBlock label="What to say in person" text={fill(kit.reviewRequest.inPerson)} />
           </div>
           <p className="mt-4 rounded-xl bg-paper-3 p-4 text-ink-2">
             <b>Two rules:</b> never offer discounts or gifts for reviews, and don&apos;t ask for reviews on Yelp. Both break the platforms&apos; rules and can get reviews removed.

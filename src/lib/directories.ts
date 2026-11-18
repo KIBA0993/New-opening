@@ -37,6 +37,7 @@ export const INDUSTRY_DIRECTORIES: Record<IndustrySlug, Directory[]> = {
     { name: "Mindbody", domain: "mindbody", url: "https://www.mindbodyonline.com/business", why: "The main directory for studios, spas and massage." },
     { name: "ClassPass", domain: "classpass.com", url: "https://classpass.com/partners", why: "Reaches people searching for classes and treatments nearby." },
     VAGARO,
+    { name: "RealSelf", domain: "realself.com", url: "https://www.realself.com/for-providers", why: "Where people research med spa and cosmetic treatments; AI tools cite its provider pages." },
   ],
   restaurants: [TRIPADVISOR, OPENTABLE, NEXTDOOR],
 };
