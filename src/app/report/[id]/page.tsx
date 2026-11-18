@@ -18,7 +18,7 @@ import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote, type KitPrice } from "@/lib/pricing";
 import { DEAL, dealOn } from "@/lib/deal";
 import { MapGrid } from "@/components/MapGrid";
-import { aiReport, aiSummary, checkContext, citationGaps, engineReadiness, findFixes, PLATFORM_LABEL, readiness, visibility } from "@/lib/report";
+import { aiReport, aiSummary, checkContext, citationGaps, engineReadiness, findFixes, placementLabel, placementPoints, PLATFORM_LABEL, readiness, visibility, visibilityScore } from "@/lib/report";
 import { cache } from "react";
 import { EmailReport, ShowFew, StickyBuyBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
@@ -151,12 +151,12 @@ function AISkeleton({ engines }: { engines: string }) {
 const STATE_LIGHT: Record<ListingState, Light> = { found: "green", different: "yellow", missing: "red", unknown: "gray" };
 const STATE_LABEL: Record<ListingState, string> = { found: "Listed", different: "Wrong details", missing: "Missing", unknown: "Can't tell" };
 
-/** The headline number: share of AI answers, across every engine, that name you. */
+/** The headline number: 0 to 100 from where you land in each AI answer (top pick, lower down, a mention, or not at all). */
 async function VisibilityHero({ place, industry }: { place: Place; industry: IndustrySlug }) {
   const report = await aiReport(place, industry);
-  const { pct, byEngine } = visibility(report.answers);
+  const { score } = visibilityScore(report.answers);
   const s = aiSummary(report.answers, report.rivals);
-  const tone = pct >= 50 ? "text-good" : pct > 0 ? "text-warn" : "text-bad";
+  const tone = score >= 60 ? "text-good" : score > 0 ? "text-warn" : "text-bad";
   return (
     <section aria-labelledby="vis" className="card mt-8 p-5 sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
@@ -164,18 +164,18 @@ async function VisibilityHero({ place, industry }: { place: Place; industry: Ind
         <DemoTag show={report.demo} />
       </div>
       <h2 id="vis" className="mt-2">
-        <span className={`font-display block text-[4.5rem] leading-none sm:text-[5.5rem] ${tone}`}>{pct}%</span>
-        <span className="mt-2 block text-[1.1rem] text-ink-2">of AI answers recommend you when customers ask for a {checkContext(place, industry).term} near you.</span>
+        <span className={`font-display block text-[4.5rem] leading-none sm:text-[5.5rem] ${tone}`}>{score}<span className="text-[0.4em] text-ink-3">/100</span></span>
+        <span className="mt-2 block text-[1.1rem] text-ink-2">How strongly AI assistants recommend you when customers ask for a {checkContext(place, industry).term} near you.</span>
       </h2>
       <p className="font-display mt-4 text-[1.3rem] leading-snug">{s.headline}</p>
       <ul className="mt-4 flex flex-wrap gap-2">
-        {byEngine.map((e) => (
-          <li key={e.engine} className="rounded-full border border-line px-3 py-1 text-[0.92rem]">
-            <span className="font-semibold">{e.label}</span> named you {e.named} of {e.total}
+        {report.answers.map((a, i) => (
+          <li key={i} className="rounded-full border border-line px-3 py-1 text-[0.92rem]">
+            <span className="font-semibold">Q{i + 1}</span> {placementLabel(a)} <span className="text-ink-3">· {placementPoints(a)}</span>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[0.9rem] text-ink-3">AI answers change from one ask to the next, so this is how often you come up, not a fixed rank.</p>
+      <p className="mt-3 text-[0.9rem] text-ink-3">Each answer scores 100 if you&apos;re the top pick, 40 to 80 if you&apos;re further down the list, 25 for a passing mention and 0 if you&apos;re not named. AI answers change from one ask to the next, so this is a snapshot.</p>
       <a href="#answers" className="mt-3 inline-block text-[0.95rem] underline underline-offset-4">See every answer and the sites the AI read</a>
     </section>
   );
@@ -316,11 +316,11 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
                       <details>
                         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2">
                           <span className="font-semibold">{ENGINE_LABEL[a.engine]}</span>
-                          <Pill light={a.mentionsYou ? "green" : "red"}>{a.mentionsYou ? "Named you" : "Didn't name you"}</Pill>
+                          <Pill light={placementPoints(a) >= 60 ? "green" : placementPoints(a) > 0 ? "yellow" : "red"}>{placementLabel(a)}</Pill>
                         </summary>
                         <p className="mt-2 text-[0.95rem] text-ink-3">{a.excerpt || "No businesses named."}</p>
                       </details>
-                      {!a.mentionsYou && (a.picks?.length || a.rivalsMentioned.length) ? <p className="mt-1 text-[0.92rem] text-ink-2">{ENGINE_LABEL[a.engine]} picked: {(a.picks?.length ? a.picks : a.rivalsMentioned).join(", ")}</p> : null}
+                      {a.placement !== "first" && (a.picks?.length || (!a.mentionsYou && a.rivalsMentioned.length)) ? <p className="mt-1 text-[0.92rem] text-ink-2">{ENGINE_LABEL[a.engine]} picked: {(a.picks?.length ? a.picks : a.rivalsMentioned).join(", ")}</p> : null}
                       {a.sources?.length ? <p className="mt-1 text-[0.85rem] text-ink-3">Sources it read: {a.sources.slice(0, 5).join(", ")}</p> : null}
                     </li>
                   ))}
