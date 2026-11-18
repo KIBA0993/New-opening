@@ -49,6 +49,7 @@ export interface EngineAnswer {
   prompt: string;
   mentionsYou: boolean;
   rivalsMentioned: string[]; // rival names
+  picks?: string[]; // every business the answer recommended, rivals or not (best effort)
   excerpt: string;
   sources?: string[]; // sites the engine read or cited (domains)
 }

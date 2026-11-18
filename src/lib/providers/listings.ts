@@ -57,10 +57,15 @@ async function searchOnce(keyword: string): Promise<Node[]> {
 const titles = (nodes: Node[] = []): string[] => nodes.flatMap((n) => [n.title || "", ...titles(n.items)]);
 
 // Google hides real links behind a redirect, so organic results are read by site name and breadcrumb.
-// A Yelp business page: website_name "Yelp", breadcrumb "https://www.yelp.com › biz › <slug>", title "<NAME> - Updated ...".
+// A Yelp business page: website_name "Yelp", title "<NAME> - Updated ...". Google used to show the
+// breadcrumb as "yelp.com › biz › <slug>" but now often shows "yelp.com › <slug>" (Nov 2026), so the
+// title has to name the business; list pages ("TOP 10 BEST Spas in ...") and search pages don't count.
 function yelpPage(i: Node, name: string) {
-  if (i.type !== "organic" || !/^yelp/i.test(i.website_name || "") || !/›\s*biz\s*›/.test(i.breadcrumb || "")) return false;
-  return sameBrand((i.title || "").split(/ - | \| /)[0], name);
+  if (i.type !== "organic") return false;
+  const where = `${i.domain || ""} ${i.website_name || ""} ${i.breadcrumb || ""}`.toLowerCase();
+  if (!where.includes("yelp") || /›\s*(search|topic|collection|c|list)\b/.test(i.breadcrumb || "")) return false;
+  const title = (i.title || "").split(/ - | \| /)[0];
+  return !/^(top|best|the \d+ best)\b/i.test(title) && sameBrand(title, name);
 }
 
 // Any other directory page about this business (Angi, BBB, Tripadvisor...): same site, title names the business.

@@ -4,7 +4,7 @@ import { cache } from "react";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
-import { askEngineFull, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, sameBrand, searchJSON } from "./providers/ai";
+import { askEngineFull, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, picksIn, sameBrand, searchJSON } from "./providers/ai";
 import { directoriesSafe, type DirectoryHit } from "./providers/listings";
 import { nearbyPhotos, profileFacts, siteFacts, websiteMatches, type ProfileFacts, type SiteFacts } from "./providers/profile";
 import { directoriesFor } from "./directories";
@@ -28,7 +28,7 @@ const FREE_QUESTIONS = 3;
 
 export function checkContext(place: Place, industrySlug: IndustrySlug) {
   const industry = industryBySlug(industrySlug)!;
-  const term = searchTerm(industry, place.primaryTypeLabel);
+  const term = searchTerm(industry, place.primaryTypeLabel, place);
   const area = place.city || place.address;
   return { industry, term, area, isNew: place.id === "new" };
 }
@@ -288,7 +288,7 @@ async function runAnswers(placeName: string, rivalNames: string[], prompts: stri
         const { text, sources } = await ask(engine, prompt, area);
         const mentionsYou = mentions(text, placeName);
         const named = rivalNames.filter((r) => mentions(text, r));
-        return { engine, prompt, mentionsYou, rivalsMentioned: named, excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || ""), sources };
+        return { engine, prompt, mentionsYou, rivalsMentioned: named, picks: picksIn(text, [placeName]), excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || ""), sources };
       } catch (e) {
         console.error("engine failed", engine, e);
         return null;
@@ -310,6 +310,7 @@ function mockAnswers(placeName: string, rivalNames: string[], prompts: string[],
       prompt,
       mentionsYou,
       rivalsMentioned,
+      picks: rivalsMentioned,
       excerpt: `Here are a few well-reviewed options: ${rivalsMentioned.join(", ")}${mentionsYou ? `, and ${placeName}, which opened recently` : ""}.`,
       sources: ["yelp.com", "google.com", "facebook.com"].slice(0, 2 + (i % 2)),
     };
@@ -439,7 +440,7 @@ const cachedListings = unstable_cache(
 
 // Keyed by ids only, so small changes in Google's data (a new review) don't trigger new paid searches.
 const cachedDirectoryListings = (place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) =>
-  unstable_cache(() => directoryListings(place, isNew, rivals, area, industry), ["listings-dfs-v2", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
+  unstable_cache(() => directoryListings(place, isNew, rivals, area, industry), ["listings-dfs-v3", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
     revalidate: 60 * 60 * 24 * 7, // listings change slowly: a week
   })();
 
@@ -515,10 +516,28 @@ export function aiSummary(answers: EngineAnswer[], rivals: Rival[]) {
   const topRivals = [...rivals].sort((a, b) => b.aiMentions - a.aiMentions).filter((r) => r.aiMentions > 0).slice(0, 3);
   const light: Light = named / total >= 0.5 ? "green" : named > 0 ? "yellow" : "red";
   let headline: string;
+  const picked = aiPicks(answers);
   if (named === 0 && topRivals.length) headline = `AI recommends ${topRivals.length === 1 ? topRivals[0].name : `these ${topRivals.length} rivals`}, not you.`;
+  else if (named === 0 && picked.length) headline = `AI recommends ${picked[0].name}${picked.length > 1 ? " and others" : ""}, not you.`;
   else if (named === 0) headline = "AI assistants don't recommend you yet.";
   else headline = `AI named you in ${named} of ${total} answers. Let's make it every time.`;
-  return { named, total, topRivals, light, headline };
+  return { named, total, topRivals, picked, light, headline };
+}
+
+/** Every business the AI recommended across the answers, most often first: the real competition in AI. */
+export function aiPicks(answers: EngineAnswer[]): { name: string; count: number }[] {
+  const out: { name: string; count: number }[] = [];
+  for (const a of answers) {
+    const seen = new Set<string>();
+    for (const name of a.picks?.length ? a.picks : a.rivalsMentioned) {
+      const row = out.find((o) => sameBrand(o.name, name));
+      if (row && seen.has(row.name)) continue;
+      if (row) row.count++;
+      else out.push({ name, count: 1 });
+      seen.add(row ? row.name : name);
+    }
+  }
+  return out.sort((x, y) => y.count - x.count);
 }
 
 export function nextFix(sig: Signal[], listings: ListingCheck[]) {
@@ -574,9 +593,10 @@ export function findFixes(place: Place, report: { answers: EngineAnswer[]; listi
   const skipped = report.answers.filter((a) => !a.mentionsYou);
   if (skipped.length) {
     const top = [...report.rivals].sort((a, b) => b.aiMentions - a.aiMentions)[0];
+    const pick = aiPicks(report.answers)[0];
     fixes.push({
       title: `Get named by AI assistants (skipped in ${skipped.length} of ${report.answers.length} answers)`,
-      why: top?.aiMentions ? `${top.name} was named instead. Your profile needs the categories, services and wording AI looks for.` : "Your profile needs the categories, services and wording AI looks for.",
+      why: top?.aiMentions ? `${top.name} was named instead. Your profile needs the categories, services and wording AI looks for.` : pick ? `AI picked ${pick.name} instead. Your profile needs the categories, services and wording AI looks for.` : "Your profile needs the categories, services and wording AI looks for.",
     });
   }
   const gaps = citationGaps(report.listings, report.rivals);

@@ -245,15 +245,55 @@ export function sameBrand(a: string, b: string) {
   return x === y || mentions(a, b) || mentions(b, a);
 }
 
+/** The brand part of a listing name: "Nora Beauty Lounge - Lashes & Brows | Johns Creek, GA" -> "Nora Beauty Lounge". */
+export function coreName(name: string) {
+  const core = name.split(/\s[-–—|]\s|\s\(|,\s/)[0].trim();
+  return core.length >= 3 ? core : name;
+}
+
 export function mentions(answer: string, name: string) {
   const a = ` ${normalizeName(answer)} `;
-  const n = normalizeName(name);
-  if (!n) return false;
-  if (a.includes(` ${n} `)) return true;
-  // Allow a match on the first two distinctive words ("Polished Nail" for "Polished Nail Lounge").
-  const words = n.split(" ");
-  if (words.length >= 3) return a.includes(` ${words.slice(0, 2).join(" ")} `);
+  for (const candidate of new Set([name, coreName(name)])) {
+    const n = normalizeName(candidate);
+    if (!n) continue;
+    if (a.includes(` ${n} `)) return true;
+    // Allow a match on the first distinctive words ("Polished Nail" for "Polished Nail Lounge",
+    // "Bluefern Spa" for "Bluefern Spa & Salon"), as long as they're specific enough (8+ letters).
+    const words = n.split(" ");
+    for (let k = 2; k < words.length; k++) {
+      const prefix = words.slice(0, k).join(" ");
+      if (prefix.replace(/ /g, "").length >= 8) {
+        if (a.includes(` ${prefix} `)) return true;
+        break;
+      }
+    }
+  }
   return false;
+}
+
+// Bold text and list items that are headings, not business names ("Top picks", "Budget option", "Why we like it").
+const HEADING_WORDS = new Set("top best pick picks budget option options tip tips note notes why pros cons price prices pricing hours address phone location locations rating ratings review reviews summary bottom line my our overall honorable mention mentions runner up also consider luxury value quick take recommendation recommendations choice choices worth highly recommended more other great good friendly affordable splurge favorite favorites services specialties highlights booking book walk ins in same day what to know".split(" "));
+const isHeading = (s: string) => /^(if|for|what|how|why|where|when|here|look|check|call|try)\b/i.test(s) || /\?$/.test(s) || normalizeName(s).split(" ").every((w) => HEADING_WORDS.has(w));
+
+/**
+ * The businesses an answer recommends, read from its formatting: AI answers put each pick in bold
+ * ("**Bluefern Spa & Salon**") or at the start of a list item ("1. Bluefern Spa & Salon - ...").
+ * Best effort, no AI call: it's what we show as "picked instead".
+ */
+export function picksIn(answer: string, exclude: string[] = []): string[] {
+  const raw: string[] = [];
+  for (const m of answer.matchAll(/\*\*([^*\n]{3,80})\*\*/g)) raw.push(m[1]);
+  if (!raw.length) for (const m of answer.matchAll(/^\s*(?:\d+[.)]|[-•*])\s+([^\n:–—]{3,60}?)(?:\s[-–—]\s|:|\n|$)/gm)) raw.push(m[1]);
+  const out: string[] = [];
+  for (let r of raw) {
+    r = r.replace(/^[^:]{0,25}:\s*(?=\S)/, "").replace(/[.:,;!]+$/, "").replace(/\s+/g, " ").trim(); // "Top pick: X." -> "X"
+    if (r.length < 3 || r.length > 60 || !/[A-Z0-9]/.test(r[0]) || isHeading(r) || /\d{3}/.test(r)) continue;
+    if (r.split(" ").length > 8) continue;
+    if (exclude.some((e) => sameBrand(e, r))) continue;
+    if (out.some((o) => sameBrand(o, r))) continue;
+    out.push(r);
+  }
+  return out.slice(0, 5);
 }
 
 export function excerptAround(answer: string, name: string, len = 220) {
