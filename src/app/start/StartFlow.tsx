@@ -1,5 +1,5 @@
 "use client";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/track";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchBox } from "@/components/SearchBox";

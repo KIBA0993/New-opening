@@ -1,5 +1,5 @@
 "use client";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/track";
 import { Children, useEffect, useState } from "react";
 import { Honeypot } from "@/components/Turnstile";
 

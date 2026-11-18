@@ -1,5 +1,5 @@
 "use client";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/track";
 import { useEffect } from "react";
 
 /** Sends one funnel event when it first renders (e.g. when the AI check finishes streaming in). */

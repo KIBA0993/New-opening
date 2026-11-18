@@ -5,6 +5,7 @@ import { stripe } from "@/lib/billing";
 import { env } from "@/lib/env";
 import { sendKitEmail } from "@/lib/fulfill";
 import { sendFirstEmail } from "@/lib/welcome";
+import { recordEvent } from "@/lib/stats";
 
 export const maxDuration = 300;
 
@@ -37,6 +38,8 @@ export async function POST(req: Request) {
         const s = event.data.object;
         const subId = typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
         // Reply to Stripe right away; writing the email takes longer than Stripe waits.
+        if (s.payment_status === "paid" && s.mode === "subscription") await recordEvent("autopilot_paid");
+        if (s.payment_status === "paid" && s.metadata?.product === "kit") await recordEvent("kit_paid");
         if (s.mode === "subscription" && subId) after(() => sendFirstEmail(subId, s.id).then(() => undefined));
         if (s.mode === "payment" && s.metadata?.product === "kit" && s.payment_status === "paid") after(() => sendKitEmail(s.id).then(() => undefined));
         break;

@@ -3,6 +3,7 @@ import { track } from "@vercel/analytics/server";
 import { z } from "zod";
 import { alertOwner, errText } from "@/lib/alert";
 import { allowIp } from "@/lib/guard";
+import { recordEvent } from "@/lib/stats";
 import { createCheckout } from "@/lib/billing";
 
 const Body = z.object({
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Some details are missing. Please go back and check them." }, { status: 400 });
   try {
     const url = await createCheckout(parsed.data.product, parsed.data.profile);
+    await recordEvent("checkout");
     await track("checkout", { product: parsed.data.product, industry: parsed.data.profile.industry }).catch(() => undefined);
     return NextResponse.json({ url });
   } catch (e) {

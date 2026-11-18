@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { PageBeat } from "@/components/PageBeat";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/site";
 
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </main>
         <SiteFooter />
         <Analytics />
+        <PageBeat />
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 import "server-only";
 import { allow } from "./guard";
 import { sendEmail } from "./email";
+import { recordAlert } from "./stats";
 
 // Emails the owner when money stops flowing: checkout errors, failed renewals, buyers who
 // didn't get what they paid for. One email per kind of problem per 30 minutes, so a burst
@@ -13,6 +14,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 export async function alertOwner(kind: string, subject: string, details: Record<string, unknown> = {}) {
   console.error(`[alert:${kind}] ${subject}`, details);
   try {
+    await recordAlert(kind, subject);
     if (!(await allow("alert", kind, 1, WINDOW_SEC))) return; // already alerted about this recently
     const rows = Object.entries(details)
       .filter(([, v]) => v != null && v !== "")

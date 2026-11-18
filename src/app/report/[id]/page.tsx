@@ -85,6 +85,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
 
       {allowed ? (
         <>
+          <TrackOnce name="check_started" data={{ industry }} />
           <Suspense fallback={<AISkeleton engines={engineNames()} />}>
             <VisibilityHero place={place} industry={industry} />
             <TopFixes place={place} industry={industry} />

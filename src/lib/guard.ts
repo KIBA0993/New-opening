@@ -40,6 +40,20 @@ async function incr(key: string, ttlSec: number): Promise<number> {
   return row.n;
 }
 
+/** Reads a counter without changing it (for the admin page). */
+export async function peek(key: string): Promise<number> {
+  if (env.upstashUrl && env.upstashToken) {
+    try {
+      const res = await fetch(`${env.upstashUrl}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${env.upstashToken}` }, cache: "no-store" });
+      return Number(((await res.json()) as { result?: string }).result) || 0;
+    } catch {
+      return 0;
+    }
+  }
+  const row = mem.get(key);
+  return row && row.exp > Date.now() ? row.n : 0;
+}
+
 export async function clientIp() {
   const h = await headers();
   return (h.get("x-forwarded-for") || "").split(",")[0].trim() || h.get("x-real-ip") || "local";
