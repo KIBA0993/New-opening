@@ -1,6 +1,7 @@
 import "server-only";
 import { env, has } from "../env";
 import { searchJSON } from "./ai";
+import { dataforseoReady } from "./dfs";
 
 // DataForSEO "Google My Business Updates" returns a business's recent Google posts.
 // It's task-based: we post tasks this week and read the results next week.
@@ -13,13 +14,13 @@ function auth() {
 }
 
 export async function postUpdateTasks(placeIds: string[]): Promise<string[]> {
-  if (!has.dataforseo() || !placeIds.length) return [];
+  if (!has.dataforseo() || !placeIds.length || !(await dataforseoReady())) return [];
   const res = await fetch(`${BASE}/task_post`, {
     method: "POST",
     headers: { Authorization: auth(), "Content-Type": "application/json" },
     body: JSON.stringify(placeIds.map((id) => ({ keyword: `place_id:${id}`, location_code: 2840, language_code: "en", tag: id }))),
-  });
-  if (!res.ok) return [];
+  }).catch(() => null);
+  if (!res?.ok) return [];
   const data = (await res.json()) as { tasks?: { id: string; status_code: number }[] };
   return (data.tasks || []).filter((t) => t.status_code === 20100).map((t) => t.id);
 }

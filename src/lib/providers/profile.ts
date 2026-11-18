@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { env, has } from "../env";
 import { spend } from "../guard";
 import type { Place } from "../types";
+import { dataforseoReady } from "./dfs";
 
 // Extra Google Business Profile facts for the readiness score, through DataForSEO:
 //  - the business's own profile: written description, total photos, claimed or not
@@ -48,8 +49,8 @@ export async function readProfileFacts(placeId: string): Promise<ProfileFacts | 
   };
 }
 
-export function profileFacts(place: Place): Promise<ProfileFacts | null> {
-  if (!has.dataforseo() || place.id === "new" || place.id.startsWith("demo_")) return Promise.resolve(null);
+export async function profileFacts(place: Place): Promise<ProfileFacts | null> {
+  if (!has.dataforseo() || place.id === "new" || place.id.startsWith("demo_") || !(await dataforseoReady())) return null;
   return unstable_cache(() => readProfileFacts(place.id), ["profile-facts-v1", place.id], { revalidate: 60 * 60 * 24 * 7 })().catch((e) => {
     console.error("profile facts", place.name, e);
     return null;
@@ -57,8 +58,8 @@ export function profileFacts(place: Place): Promise<ProfileFacts | null> {
 }
 
 /** Photo counts (and claimed status) for businesses showing in Maps at the shop, by Google place id. */
-export function nearbyPhotos(place: Place, keyword: string): Promise<Record<string, { photos: number | null; claimed: boolean | null }> | null> {
-  if (!has.dataforseo() || place.lat == null || place.lng == null || place.id.startsWith("demo_")) return Promise.resolve(null);
+export async function nearbyPhotos(place: Place, keyword: string): Promise<Record<string, { photos: number | null; claimed: boolean | null }> | null> {
+  if (!has.dataforseo() || place.lat == null || place.lng == null || place.id.startsWith("demo_") || !(await dataforseoReady())) return null;
   return unstable_cache(
     async () => {
       const r = await dfs<{ items?: { type?: string; place_id?: string; total_photos?: number; is_claimed?: boolean }[] }>("serp/google/maps/live/advanced", {

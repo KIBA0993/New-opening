@@ -1,16 +1,29 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { env, has } from "../env";
+import { spend } from "../guard";
 import { seeded } from "../mock";
 import type { Place } from "../types";
+import { dataforseoReady } from "./dfs";
 
 // Map grid rank check: where the shop shows up in Google Maps from spots around it.
 // The free check uses 3x3 (9 lookups, cached 3 days); Kit and Autopilot buyers get 5x5 (25, refreshed weekly).
-// Docs: https://docs.dataforseo.com/v3/serp/google/maps/live/advanced/
+//
+// Two sources:
+//  - Google Places API (New) Text Search (default). One search per spot, centered on that spot,
+//    asking only for place ids. That's Google's "Text Search Essentials (IDs Only)" SKU, which has
+//    no charge, so the grid costs nothing on the Places bill. Results follow Google's own ranking
+//    near that point, which is close to (not identical to) the Maps app list.
+//    Docs: https://developers.google.com/maps/documentation/places/web-service/text-search
+//  - DataForSEO Maps SERP (the real Maps list, about $0.002 a spot). Used only with GRID_PROVIDER=dataforseo
+//    and money on the account; any spot it fails on falls back to Places.
+//    Docs: https://docs.dataforseo.com/v3/serp/google/maps/live/advanced/
 export const FREE_GRID = 3;
 export const FULL_GRID = 5;
 const SPACING_MILES = Number(process.env.GRID_SPACING_MILES || 0.5);
+const RADIUS_M = Number(process.env.GRID_RADIUS_METERS || 2000); // how far around each spot Places looks first
 const DEPTH = 20; // positions past 20 count as "not in the top 20"
+const PROVIDER = (process.env.GRID_PROVIDER || "places").toLowerCase();
 
 export interface GridCell {
   lat: number;
@@ -28,11 +41,13 @@ export interface GridResult {
   demo: boolean;
 }
 
+type Pt = { lat: number; lng: number };
+
 function points(lat: number, lng: number, size: number) {
   const dLat = SPACING_MILES / 69;
   const dLng = SPACING_MILES / (69 * Math.cos((lat * Math.PI) / 180));
   const half = (size - 1) / 2;
-  const out: { lat: number; lng: number }[] = [];
+  const out: Pt[] = [];
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) out.push({ lat: lat + (half - r) * dLat, lng: lng + (c - half) * dLng });
   }
@@ -42,7 +57,8 @@ function points(lat: number, lng: number, size: number) {
 const auth = () => "Basic " + Buffer.from(`${env.dataforseoLogin}:${env.dataforseoPassword}`).toString("base64");
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-async function rankAt(keyword: string, pt: { lat: number; lng: number }, place: Place): Promise<number | null> {
+async function rankDataForSEO(keyword: string, pt: Pt, place: Place): Promise<number | null> {
+  await spend("dataforseo");
   const res = await fetch("https://api.dataforseo.com/v3/serp/google/maps/live/advanced", {
     method: "POST",
     headers: { Authorization: auth(), "Content-Type": "application/json" },
@@ -52,11 +68,33 @@ async function rankAt(keyword: string, pt: { lat: number; lng: number }, place: 
   });
   if (!res.ok) throw new Error(`DataForSEO ${res.status}`);
   const data = (await res.json()) as {
-    tasks?: { result?: { items?: { type?: string; rank_group?: number; place_id?: string; title?: string }[] }[] }[];
+    tasks?: { status_code?: number; status_message?: string; result?: { items?: { type?: string; rank_group?: number; place_id?: string; title?: string }[] }[] }[];
   };
-  const items = data.tasks?.[0]?.result?.[0]?.items || [];
+  const task = data.tasks?.[0];
+  if (task?.status_code !== 20000) throw new Error(`DataForSEO ${task?.status_code} ${task?.status_message}`);
+  const items = task.result?.[0]?.items || [];
   const hit = items.find((i) => (i.place_id && i.place_id === place.id) || (i.title && norm(i.title) === norm(place.name)));
   return hit?.rank_group ?? null;
+}
+
+async function rankPlaces(keyword: string, pt: Pt, place: Place): Promise<number | null> {
+  // Not counted against the Places daily cap: IDs-only searches are free. Their own cap guards runaway loops.
+  await spend("grid");
+  const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": env.googlePlaces, "X-Goog-FieldMask": "places.id" },
+    body: JSON.stringify({
+      textQuery: keyword,
+      pageSize: DEPTH,
+      languageCode: "en",
+      locationBias: { circle: { center: { latitude: pt.lat, longitude: pt.lng }, radius: RADIUS_M } },
+    }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Places grid ${res.status} ${(await res.text()).slice(0, 300)}`);
+  const data = (await res.json()) as { places?: { id: string }[] };
+  const i = (data.places || []).findIndex((p) => p.id === place.id);
+  return i < 0 ? null : i + 1;
 }
 
 function summarize(keyword: string, size: number, cells: GridCell[], demo: boolean): GridResult {
@@ -87,9 +125,28 @@ function mockGrid(place: Place, keyword: string, size: number): GridResult {
 
 async function liveGrid(place: Place, keyword: string, size: number): Promise<GridResult> {
   const pts = points(place.lat!, place.lng!, size);
+  const useDfs = PROVIDER === "dataforseo" && (await dataforseoReady());
+  let failed = 0;
   const cells = await Promise.all(
-    pts.map(async (pt) => ({ ...pt, rank: await rankAt(keyword, pt, place).catch(() => null) })),
+    pts.map(async (pt) => {
+      let rank: number | null;
+      try {
+        rank = useDfs
+          ? await rankDataForSEO(keyword, pt, place).catch((e) => {
+              console.error("grid dataforseo, using Places", e);
+              return rankPlaces(keyword, pt, place);
+            })
+          : await rankPlaces(keyword, pt, place);
+      } catch (e) {
+        if (!failed) console.error("grid", e);
+        failed++;
+        rank = null;
+      }
+      return { ...pt, rank };
+    }),
   );
+  // A grid where most lookups failed would show "not in the top 20" everywhere. Throw so it isn't cached.
+  if (failed > pts.length / 3) throw new Error(`grid: ${failed} of ${pts.length} lookups failed`);
   return summarize(keyword, size, cells, false);
 }
 
@@ -99,7 +156,7 @@ const dailyGrid = unstable_cache(
     void key;
     return liveGrid(place, keyword, size);
   },
-  ["grid-v2-daily"],
+  ["grid-v3-daily"],
   { revalidate: 60 * 60 * 24 * 3 },
 );
 const weeklyGrid = unstable_cache(
@@ -107,16 +164,16 @@ const weeklyGrid = unstable_cache(
     void key;
     return liveGrid(place, keyword, size);
   },
-  ["grid-v2-weekly"],
+  ["grid-v3-weekly"],
   { revalidate: 60 * 60 * 24 * 7 },
 );
 
-/** True once DataForSEO is connected. Until then real businesses see "coming soon", not made-up ranks. */
-export const gridLive = () => has.dataforseo();
+/** True once a grid source is connected (Google Places, or DataForSEO). Until then real businesses see "coming soon". */
+export const gridLive = () => has.places() || (PROVIDER === "dataforseo" && has.dataforseo());
 
 /**
- * Grid of Google Maps positions. Null for brand-new businesses (not on Maps yet), or for real
- * businesses before DataForSEO is connected. Sample businesses get sample data.
+ * Grid of Google Maps positions. Null for brand-new businesses (not on Maps yet), when no source
+ * is connected, or when the lookups failed. Sample businesses get sample data.
  */
 export async function mapGrid(place: Place, keyword: string, size: number = FREE_GRID): Promise<GridResult | null> {
   if (place.id === "new" || place.lat == null || place.lng == null) return null;
@@ -124,7 +181,7 @@ export async function mapGrid(place: Place, keyword: string, size: number = FREE
   if (!gridLive()) return null;
   try {
     const fn = size > FREE_GRID ? weeklyGrid : dailyGrid;
-    return await fn(`${place.id}|${keyword}|${size}`, place, keyword, size);
+    return await fn(`${place.id}|${keyword}|${size}|${PROVIDER}`, place, keyword, size);
   } catch (e) {
     console.error("grid", e);
     return null;

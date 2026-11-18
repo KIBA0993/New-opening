@@ -5,6 +5,7 @@ import { industryBySlug } from "./industries";
 import { getJSON, setJSON } from "./kv";
 import { emptyProgress, type KitProgress, type StepCheck, type StepId } from "./kitSteps";
 import { sameBrand } from "./providers/ai";
+import { dataforseoReady } from "./providers/dfs";
 import { directoriesSafe } from "./providers/listings";
 import { getPlace, searchBusinesses } from "./providers/places";
 import { readProfileFacts, readSite, type ProfileFacts, type SiteFacts } from "./providers/profile";
@@ -45,11 +46,12 @@ export async function runCheck(p: OwnerProfile): Promise<{ at: string; steps: Pa
   const website = p.website || place?.website;
   const phone = place?.phone || p.phone;
   const dirs = directoriesFor(p.industry);
+  const dfs = await dataforseoReady();
 
   const [facts, site, listed] = await Promise.all([
-    place && has.dataforseo() ? readProfileFacts(place.id).catch(() => null) : Promise.resolve(null as ProfileFacts | null),
+    place && dfs ? readProfileFacts(place.id).catch(() => null) : Promise.resolve(null as ProfileFacts | null),
     website ? readSite({ ...(place || { id: "new", name: p.name, address: p.address }), name: p.name, website, phone } as Place).catch(() => null) : Promise.resolve(null as SiteFacts | null),
-    has.dataforseo() ? directoriesSafe(p.name, place?.address || p.address || p.city, place?.id, dirs.map((d) => d.domain)) : Promise.resolve(null),
+    dfs ? directoriesSafe(p.name, place?.address || p.address || p.city, place?.id, dirs.map((d) => d.domain)) : Promise.resolve(null),
   ]);
 
   const steps: Partial<Record<StepId, StepCheck>> = {};
