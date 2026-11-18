@@ -281,7 +281,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   const prompts = [...new Set(report.answers.map((a) => a.prompt))];
   const term = checkContext(place, industry).term;
   // When no rival was named anywhere, a column of zeros says nothing: show who the AI picked instead.
-  const anyRivalNamed = s.named > 0 || report.rivals.some((r) => r.aiMentions > 0);
+  const anyRivalNamed = report.rivals.some((r) => r.aiMentions > 0);
   const outsidePicks = s.picked.slice(0, 4);
   const listed = report.listings.filter((l) => l.state === "found").length;
   const gaps = citationGaps(report.listings, report.rivals);
@@ -336,7 +336,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
         <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {pluralTerm(term)} near you on Google Maps. A listing marked &ldquo;?&rdquo; means we couldn&apos;t check it.</p>
         {!anyRivalNamed && outsidePicks.length ? (
           <p className="mt-3 rounded-xl bg-paper-3 p-3 text-[0.95rem] text-ink-2">
-            <b>AI didn&apos;t name you or any of these.</b> It recommended {outsidePicks.map((p) => p.name).join(", ")} instead. Those are your real rivals in AI answers.
+            <b>AI didn&apos;t name {s.named ? "any of these rivals" : "you or any of these"}.</b> It recommended {outsidePicks.map((p) => p.name).join(", ")} instead. Those are your real rivals in AI answers.
           </p>
         ) : null}
         <ShowFew few={3} label={`See all ${report.rivals.length} rivals`}>
