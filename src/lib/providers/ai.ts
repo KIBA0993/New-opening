@@ -10,7 +10,7 @@ import { askClaude, claudeSearchJSON, claudeWrite } from "./claude";
 
 export const ENGINE_LABEL: Record<Engine, string> = {
   chatgpt: "ChatGPT",
-  claude: "Claude",
+  claude: "AI assistant", // customers never see the provider's name (KIBA, Nov 18)
   perplexity: "Perplexity",
   gemini: "Gemini",
 };
@@ -31,9 +31,11 @@ export function checkEngines(): { engines: Engine[]; demo: boolean } {
   return live.length ? { engines: live, demo: false } : { engines: ["chatgpt", "perplexity", "gemini"], demo: true };
 }
 
-/** "Claude", "ChatGPT and Claude", "ChatGPT, Claude and Gemini" - for honest copy. */
+/** "AI assistants", "ChatGPT and other AI assistants", "ChatGPT, Gemini and other AI assistants" - for honest copy. */
 export function engineNames(): string {
-  const names = checkEngines().engines.map((e) => ENGINE_LABEL[e]);
+  const engines = checkEngines().engines;
+  const names = engines.filter((e) => e !== "claude").map((e) => ENGINE_LABEL[e]);
+  if (engines.includes("claude")) names.push(names.length ? "other AI assistants" : "AI assistants");
   return names.length <= 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 

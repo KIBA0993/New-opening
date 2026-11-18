@@ -259,7 +259,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
             {kit.areaPage ? <CopyBlock label={`Areas page: ${kit.areaPage.title} (/${kit.areaPage.slug})`} text={kit.areaPage.body} /> : null}
             <CopyBlock label="FAQ page" text={kit.qa.map((x) => `${x.q}\n${x.a}`).join("\n\n")} hint="The same questions as your Google profile, as one page on your site." />
             <CopyBlock label="Business schema (paste into your site's <head>)" text={schema} hint="Tells AI your name, phone, area and services without guessing. Most site builders have a 'custom code' or 'header code' box." />
-            <CopyBlock label="robots.txt lines for AI search" text={robots} hint="Add these to your robots.txt so ChatGPT, Perplexity, Gemini and Claude can read and cite your site." />
+            <CopyBlock label="robots.txt lines for AI search" text={robots} hint="Add these to your robots.txt so ChatGPT, Perplexity, Gemini and other AI assistants can read and cite your site." />
           </div>
         </Step>
 
