@@ -4,7 +4,7 @@ import { PRICES } from "@/lib/env";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { DEAL, dealEndLabel, dealOn, KIT_TRIAL_DAYS } from "@/lib/deal";
 import { BuyButton } from "./BuyButton";
-import { KitTrialNote } from "./KitTrialNote";
+import { KitBuy } from "./KitBuy";
 import type { Industry } from "@/lib/industries";
 import { Check, Pill, Section } from "./ui";
 
@@ -146,12 +146,11 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
           {kit.leftAtPrice != null ? <p className="text-[0.9rem] font-semibold text-accent">{launchNote(kit)}</p> : null}
           {deal ? <p className="text-[0.9rem] text-ink-3">${DEAL.kitAfter} after the launch deal ends {dealEndLabel()}.</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
-            {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep", ...(KIT_TRIAL_DAYS > 0 ? ["First week of the Weekly Autopilot, free"] : [])].map((t) => (
+            {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep", ...(KIT_TRIAL_DAYS > 0 ? ["Optional: first week of Autopilot free"] : [])].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
             ))}
           </ul>
-          <BuyButton product="kit" className="btn btn-primary mt-6 w-full">Get the Launch Kit · {kit.label}</BuyButton>
-          <KitTrialNote className="mt-3" />
+          <div className="mt-6"><KitBuy kitLabel={kit.label} monthlyLabel={PRICES.monthly.label} trialDays={KIT_TRIAL_DAYS} className="btn btn-primary w-full" /></div>
           <Link href={cta} className="link mt-3 inline-block text-[0.95rem]">Or run the free check first</Link>
         </div>
         <div className="card p-6">

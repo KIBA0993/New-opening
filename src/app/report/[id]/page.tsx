@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { KitTrialNote } from "@/components/KitTrialNote";
+import { KitBuy } from "@/components/KitBuy";
 import { BuyButton } from "@/components/BuyButton";
 import { CopyButton } from "@/components/CopyButton";
 import { TrackOnce } from "@/components/TrackOnce";
@@ -17,7 +17,7 @@ import { isAdmin } from "@/lib/admin";
 import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote, type KitPrice } from "@/lib/pricing";
-import { DEAL, dealOn } from "@/lib/deal";
+import { DEAL, dealOn, KIT_TRIAL_DAYS } from "@/lib/deal";
 import { MapGrid } from "@/components/MapGrid";
 import { aiReport, aiSummary, checkContext, citationGaps, engineReadiness, findFixes, placementLabel, placementPoints, PLATFORM_LABEL, readiness, visibility, visibilityScore } from "@/lib/report";
 import { cache } from "react";
@@ -439,11 +439,10 @@ function QuickOfferView({ place, industry, kit }: { place: Place; industry: Indu
             Launch Kit{kit ? ` · ${kit.label} one time` : ""}: every profile written for you, a verification coach and guided setup on 6 platforms.
           </p>
         </div>
-        <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full shrink-0 !min-h-[52px] sm:w-auto">
-          Get my Launch Kit{kit ? ` · ${kit.label}` : ""}
-        </BuyButton>
+        <div className="shrink-0 sm:max-w-[17rem]">
+          <KitBuy kitLabel={kit?.label} monthlyLabel={PRICES.monthly.label} trialDays={KIT_TRIAL_DAYS} placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[52px]" />
+        </div>
       </div>
-      <KitTrialNote placeId={place.id} industry={industry} className="mt-3" />
       <p className="mt-2 text-[0.88rem] text-ink-3">
         {kit && kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}
         Just want the weekly email?{" "}
@@ -451,7 +450,7 @@ function QuickOfferView({ place, industry, kit }: { place: Place; industry: Indu
         {" or "}
         <BuyButton product="yearly" placeId={place.id} industry={industry} className="inline font-semibold text-ink-2 underline underline-offset-4">{yearly}</BuyButton>. {REFUND}
       </p>
-      {kit ? <StickyBuyBar placeId={place.id} industry={industry} kitLabel={kit.label} endsAt={dealOn() ? DEAL.endsAt : null} /> : null}
+      {kit ? <StickyBuyBar placeId={place.id} industry={industry} kitLabel={kit.label} monthlyLabel={PRICES.monthly.label} trialDays={KIT_TRIAL_DAYS} endsAt={dealOn() ? DEAL.endsAt : null} /> : null}
     </section>
   );
 }
@@ -502,14 +501,11 @@ async function TopFixes({ place, industry }: { place: Place; industry: IndustryS
           </div>
         ) : (
           <div className="mt-6">
-            <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
-              Fix {top.length > 1 ? "these" : "this"} for {kit.label}
-            </BuyButton>
-            <KitTrialNote placeId={place.id} industry={industry} className="mt-3" />
+            <KitBuy kitLabel={kit.label} monthlyLabel={PRICES.monthly.label} trialDays={KIT_TRIAL_DAYS} placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto" />
           </div>
         )}
         <p className="mt-3 text-[0.9rem] text-ink-3">
-          {fixes.length > top.length ? `Your kit covers all ${fixes.length} fixes. ` : ""}One-time payment. {REFUND}
+          {fixes.length > top.length ? `Your kit covers all ${fixes.length} fixes. ` : ""}{REFUND}
         </p>
       </section>
     </>
@@ -519,9 +515,7 @@ async function TopFixes({ place, industry }: { place: Place; industry: IndustryS
 async function Unlock({ place, industry, sharePath }: { place: Place; industry: IndustrySlug; sharePath: string }) {
   const [kit, { strong }] = await Promise.all([kitPrice(), standing(place, industry)]);
   const kitBtn = (
-    <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
-      Get my Launch Kit · {kit.label}
-    </BuyButton>
+    <KitBuy kitLabel={kit.label} monthlyLabel={PRICES.monthly.label} trialDays={KIT_TRIAL_DAYS} placeId={place.id} industry={industry} dark className="btn btn-accent w-full !min-h-[56px] sm:w-auto" />
   );
   const autoBtn = (
     <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
@@ -562,14 +556,13 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
               <li>Guided setup on Apple Maps, Bing, Yelp, Facebook and ChatGPT</li>
               <li>Your review link, a QR card to print, and ready-to-send review requests</li>
             </ul>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-5">
               {kitBtn}
               <BuyButton product="monthly" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
                 Or keep watch weekly · {PRICES.monthly.label}/mo
               </BuyButton>
             </div>
-            <KitTrialNote placeId={place.id} industry={industry} dark className="mt-3" />
-            <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment. {REFUND} Secure checkout by Stripe.</p>
+            <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}{REFUND} Secure checkout by Stripe.</p>
           </>
         )}
       </section>

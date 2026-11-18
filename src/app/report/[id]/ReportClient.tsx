@@ -2,14 +2,14 @@
 import { track } from "@/lib/track";
 import { Children, useEffect, useState } from "react";
 import { Honeypot } from "@/components/Turnstile";
-import { BuyButton } from "@/components/BuyButton";
+import { KitBuy } from "@/components/KitBuy";
 import { useCountdown } from "@/components/DealBanner";
 
 /**
  * Buy bar pinned to the bottom of the screen (phone and desktop). Shows once the offer at the
  * top has scrolled away, hides when the full offer at the end is on screen.
  */
-export function StickyBuyBar({ placeId, industry, kitLabel, endsAt }: { placeId: string; industry: string; kitLabel: string; endsAt: number | null }) {
+export function StickyBuyBar({ placeId, industry, kitLabel, monthlyLabel, trialDays, endsAt }: { placeId: string; industry: string; kitLabel: string; monthlyLabel: string; trialDays: number; endsAt: number | null }) {
   const [show, setShow] = useState(false);
   const { text } = useCountdown(endsAt ?? 0);
   useEffect(() => {
@@ -34,9 +34,7 @@ export function StickyBuyBar({ placeId, industry, kitLabel, endsAt }: { placeId:
           </p>
         </div>
         <div className="w-full sm:w-auto" onClick={() => track("sticky_bar")}>
-          <BuyButton product="kit" placeId={placeId} industry={industry} className="btn btn-accent w-full !min-h-[52px] sm:!px-7">
-            Get my Launch Kit · {kitLabel}
-          </BuyButton>
+          <KitBuy kitLabel={kitLabel} monthlyLabel={monthlyLabel} trialDays={trialDays} placeId={placeId} industry={industry} compact className="btn btn-accent w-full !min-h-[48px] sm:!px-7" />
           {endsAt && text ? <p className="mt-1 text-center text-[0.8rem] text-ink-3 sm:hidden">Launch deal ends in <span className="font-semibold tabular-nums text-accent">{text}</span></p> : null}
         </div>
       </div>
