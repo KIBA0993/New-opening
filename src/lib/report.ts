@@ -10,7 +10,7 @@ import { nearbyPhotos, profileFacts, siteFacts, websiteMatches, type ProfileFact
 import { directoriesFor } from "./directories";
 import { reviewFreshness, type ReviewFreshness } from "./providers/places";
 import { findRivals } from "./providers/places";
-import type { Engine, EngineAnswer, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
+import type { Engine, EngineAnswer, Placement, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
   google: "Google Maps",
@@ -288,7 +288,8 @@ async function runAnswers(placeName: string, rivalNames: string[], prompts: stri
         const { text, sources } = await ask(engine, prompt, area);
         const mentionsYou = mentions(text, placeName);
         const named = rivalNames.filter((r) => mentions(text, r));
-        return { engine, prompt, mentionsYou, rivalsMentioned: named, picks: picksIn(text, [placeName]), excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || ""), sources };
+        const { placement, rank } = placementIn(text, placeName, mentionsYou);
+        return { engine, prompt, mentionsYou, placement, rank, rivalsMentioned: named, picks: picksIn(text, [placeName]), excerpt: excerptAround(text, mentionsYou ? placeName : named[0] || ""), sources };
       } catch (e) {
         console.error("engine failed", engine, e);
         return null;
@@ -476,6 +477,43 @@ export async function freshCheck(place: Place, industrySlug: IndustrySlug) {
   const res = await runAnswers(place.name, rivals.map((r) => r.name), buildPrompts(industry, term, area), area, true);
   if (!res.answers.length) throw new Error("No AI answers came back.");
   return { ...res, ...visibility(res.answers), checkedAt: new Date().toISOString() };
+}
+
+/**
+ * Where the business landed in one answer. The recommended businesses are read in order from the
+ * answer's formatting; named outside that list (a caveat, "I couldn't confirm...") is "mentioned".
+ * When the answer has no list to read, a mention counts as recommended lower down.
+ */
+export function placementIn(text: string, placeName: string, mentionsYou = mentions(text, placeName)): { placement: Placement; rank?: number } {
+  if (!mentionsYou) return { placement: "none" };
+  const all = picksIn(text);
+  const i = all.findIndex((p) => sameBrand(p, placeName));
+  if (i === 0) return { placement: "first", rank: 1 };
+  if (i > 0) return { placement: "listed", rank: i + 1 };
+  return { placement: all.length ? "mentioned" : "listed" };
+}
+
+/** Points per answer: top pick 100, then 80 for #2 down to 40, a passing mention 25, not named 0. */
+export function placementPoints(a: EngineAnswer): number {
+  const p = a.placement || (a.mentionsYou ? "listed" : "none");
+  if (p === "first") return 100;
+  if (p === "listed") return a.rank ? Math.max(40, 100 - 10 * a.rank) : 60;
+  if (p === "mentioned") return 25;
+  return 0;
+}
+
+export function placementLabel(a: EngineAnswer): string {
+  const p = a.placement || (a.mentionsYou ? "listed" : "none");
+  if (p === "first") return "Top pick";
+  if (p === "listed") return a.rank ? `Named #${a.rank}` : "Named you";
+  if (p === "mentioned") return "Mentioned, not recommended";
+  return "Didn't name you";
+}
+
+/** The free check's headline: 0 to 100 from where you land in each answer, not just whether you're in it. */
+export function visibilityScore(answers: EngineAnswer[]) {
+  const score = answers.length ? Math.round(answers.reduce((n, a) => n + placementPoints(a), 0) / answers.length) : 0;
+  return { score, ...visibility(answers) };
 }
 
 /** One number across every engine and question: the share of answers that name you. */

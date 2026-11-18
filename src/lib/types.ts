@@ -44,12 +44,17 @@ export interface OwnerProfile {
 
 export type Engine = "chatgpt" | "claude" | "perplexity" | "gemini";
 
+/** first: the answer's top pick. listed: recommended, lower down. mentioned: named but not recommended. */
+export type Placement = "first" | "listed" | "mentioned" | "none";
+
 export interface EngineAnswer {
   engine: Engine;
   prompt: string;
   mentionsYou: boolean;
   rivalsMentioned: string[]; // rival names
   picks?: string[]; // every business the answer recommended, rivals or not (best effort)
+  placement?: Placement; // where you landed in this answer
+  rank?: number; // your position among the businesses it recommended (1 = first), when listed
   excerpt: string;
   sources?: string[]; // sites the engine read or cited (domains)
 }
