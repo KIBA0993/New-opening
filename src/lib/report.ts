@@ -11,6 +11,7 @@ import { nearbyPhotos, profileFacts, siteFacts, websiteMatches, type ProfileFact
 import { directoriesFor } from "./directories";
 import { reviewFreshness, type ReviewFreshness } from "./providers/places";
 import { findRivals } from "./providers/places";
+import { dataforseoReady } from "./providers/dfs";
 import type { Engine, EngineAnswer, Placement, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
@@ -459,9 +460,10 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   const { industry, term, area, isNew } = checkContext(place, industrySlug);
   const { rivals: rivalPlaces, demo: rivalsDemo } = await getRivals(place, industrySlug);
   const prompts = buildPrompts(industry, term, area);
+  const dfs = !place.id.startsWith("demo_") && (await dataforseoReady());
   const [ans, lst] = await Promise.all([
     runAnswers(place.name, rivalPlaces.map((r) => r.name), prompts, area),
-    has.dataforseo() && !place.id.startsWith("demo_")
+    dfs
       ? cachedDirectoryListings(place, isNew, rivalPlaces, area, industrySlug)
       : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area).then((x) => ({ ...x, directories: null })),
   ]);
