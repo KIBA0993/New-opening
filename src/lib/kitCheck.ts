@@ -1,6 +1,7 @@
 import "server-only";
 import { directoriesFor } from "./directories";
 import { has } from "./env";
+import { industryBySlug } from "./industries";
 import { getJSON, setJSON } from "./kv";
 import { emptyProgress, type KitProgress, type StepCheck, type StepId } from "./kitSteps";
 import { sameBrand } from "./providers/ai";
@@ -82,7 +83,18 @@ export async function runCheck(p: OwnerProfile): Promise<{ at: string; steps: Pa
     if (place && p.phone && place.phone) (digits(place.phone) === digits(p.phone) ? f : m).push(digits(place.phone) === digits(p.phone) ? "Google shows the same phone" : "Google shows a different phone than your Kit");
     if (site?.phone != null) (site.phone ? f : m).push(site.phone ? "Your website shows the same phone" : "Your website doesn't show the same phone as Google");
     if (site?.name === false) m.push("Your website doesn't show your business name as written");
-    steps.details = step(f, m, true);
+    if (site?.address != null && !industryBySlug(p.industry)?.serviceArea) (site.address ? f : m).push(site.address ? "Your website shows your street address" : "Your website doesn't show the street address Google has");
+    if (place && p.name && !sameBrand(place.name, p.name)) m.push(`Google shows your name as "${place.name}". Use one name everywhere`);
+    // Phone numbers in the Yelp and directory search snippets that differ from Google's.
+    const want = digits(phone);
+    if (want.length === 10 && listed?.snippets?.length) {
+      for (const sn of listed.snippets) {
+        const seen = [...sn.text.matchAll(/\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g)].map((x) => digits(x[0]));
+        if (seen.length && !seen.includes(want)) m.push(`${sn.site || "A directory"} shows a different phone (${seen[0].replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")})`);
+        else if (seen.includes(want)) f.push(`${sn.site || "A directory"} shows the same phone`);
+      }
+    }
+    steps.details = step([...new Set(f)], [...new Set(m)], true);
   }
 
   // Website
@@ -94,7 +106,8 @@ export async function runCheck(p: OwnerProfile): Promise<{ at: string; steps: Pa
     steps.facts = { state: "unknown", found: [], missing: [] };
   } else {
     const f: string[] = [], m: string[] = [];
-    (site.servicePages >= 2 ? f : m).push(site.servicePages >= 2 ? `${site.servicePages} service pages` : `A page for each service (we found ${site.servicePages})`);
+    if (/mapdebut\.com\/b\//.test(website)) f.push("Your MapDebut page lists each service");
+    else (site.servicePages >= 2 ? f : m).push(site.servicePages >= 2 ? `${site.servicePages} service pages` : `A page for each service (we found ${site.servicePages})`);
     (site.areaPage ? f : m).push("Areas you serve page");
     (site.schema ? f : m).push("Business schema");
     if (site.blocked) {

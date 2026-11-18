@@ -5,7 +5,7 @@ import { composeDigest, packSnapshot } from "./digest";
 import { env } from "./env";
 import { alertOwner, errText } from "./alert";
 import { renderDigestHtml, sendEmail } from "./email";
-import { kitBlock, applyKitPost } from "./kitDigest";
+import { applyKitPost, kitBlock, ownerLinks } from "./kitDigest";
 
 // The first Autopilot email goes out right after purchase. The thank-you page triggers it,
 // and an hourly job catches anyone who closed the tab before reaching that page.
@@ -32,6 +32,7 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
     await applyKitPost(digest, kit, checkout?.id, profile);
     const html = renderDigestHtml(digest, {
       kitProgress: kit,
+      ...ownerLinks(profile),
       report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
       account: sid ? `${env.siteUrl}/autopilot/account?session_id=${sid}` : undefined,
       trial: trialNotice(sub, sid),

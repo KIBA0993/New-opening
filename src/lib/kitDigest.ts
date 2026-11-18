@@ -4,6 +4,7 @@ import { env } from "./env";
 import { writeKit } from "./kit";
 import { checkAndSave, loadProgress } from "./kitCheck";
 import { doneCount, nextStep, STEP_IDS, STEP_TITLE } from "./kitSteps";
+import { reviewLink } from "./providers/places";
 import type { OwnerProfile, WeeklyDigest } from "./types";
 
 // For Kit buyers, the Autopilot email doubles as a coach: how far along the Kit they are, the next
@@ -36,4 +37,10 @@ export async function applyKitPost(digest: WeeklyDigest, block: KitBlock | null,
   const kit = await writeKit(checkoutId, profile).catch(() => null);
   const post = kit?.posts?.[block.week - 1];
   if (post?.body) digest.googlePost = post.body;
+}
+
+/** Where the owner replies to reviews (Google Search shows owners their own profile) and their review link. */
+export function ownerLinks(p: OwnerProfile): { google?: string; review?: string } {
+  if (!p.placeId || p.placeId === "new" || p.placeId.startsWith("demo_")) return {};
+  return { google: `https://www.google.com/search?q=${encodeURIComponent(`${p.name} ${p.city || p.address}`.trim())}`, review: reviewLink(p.placeId) };
 }
