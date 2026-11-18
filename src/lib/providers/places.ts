@@ -104,21 +104,38 @@ function e164(q: string) {
 }
 
 /** One box: name, address or phone. */
+/** Older Find Place endpoint. Returns null when the project doesn't have the older Places API turned on. */
+async function findByPhoneLegacy(q: string): Promise<Place[] | null> {
+  const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
+  url.searchParams.set("input", e164(q));
+  url.searchParams.set("inputtype", "phonenumber");
+  url.searchParams.set("fields", "place_id");
+  url.searchParams.set("key", env.googlePlaces);
+  const res = await fetch(url, { cache: "no-store" });
+  const data = (await res.json()) as { status?: string; candidates?: { place_id: string }[] };
+  if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") return null;
+  const ids = (data.candidates || []).slice(0, 5).map((c) => c.place_id);
+  const places = await Promise.all(ids.map((id) => getPlace(id)));
+  return places.filter(Boolean) as Place[];
+}
+
 export async function searchBusinesses(q: string): Promise<{ places: Place[]; demo: boolean }> {
   if (!has.places()) return { places: mockSearch(q), demo: true };
 
   if (looksLikePhone(q)) {
-    // The newer API has no phone lookup, so use the older Find Place endpoint for IDs.
-    const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
-    url.searchParams.set("input", e164(q));
-    url.searchParams.set("inputtype", "phonenumber");
-    url.searchParams.set("fields", "place_id");
-    url.searchParams.set("key", env.googlePlaces);
-    const res = await fetch(url, { cache: "no-store" });
-    const data = (await res.json()) as { candidates?: { place_id: string }[] };
-    const ids = (data.candidates || []).slice(0, 5).map((c) => c.place_id);
-    const places = await Promise.all(ids.map((id) => getPlace(id)));
-    return { places: places.filter(Boolean) as Place[], demo: false };
+    // Google no longer lets new projects turn on the older Places API, so the phone lookup
+    // uses it only when it's available and otherwise searches the newer API by phone number.
+    const legacy = await findByPhoneLegacy(q).catch(() => null);
+    if (legacy?.length) return { places: legacy, demo: false };
+    const data = await gpost<{ places?: GPlace[] }>(
+      "places:searchText",
+      { textQuery: e164(q), pageSize: 10, regionCode: "us" },
+      FIELDS.map((f) => `places.${f}`).join(","),
+    );
+    const all = (data.places || []).map(toPlace);
+    const want = q.replace(/\D/g, "").slice(-10);
+    const exact = all.filter((pl) => (pl.phone || "").replace(/\D/g, "").slice(-10) === want);
+    return { places: (exact.length ? exact : all).slice(0, 5), demo: false };
   }
 
   const data = await gpost<{ places?: GPlace[] }>(
