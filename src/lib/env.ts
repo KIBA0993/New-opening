@@ -23,6 +23,7 @@ export const env = {
   resend: process.env.RESEND_API_KEY || "",
   resendAudience: process.env.RESEND_AUDIENCE_ID || "",
   emailFrom: process.env.EMAIL_FROM || "MapDebut <hello@example.com>",
+  emailReplyTo: process.env.EMAIL_REPLY_TO || "support@mapdebut.com",
   cronSecret: process.env.CRON_SECRET || "",
   siteUrl: (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, ""),
   authSecret: process.env.AUTH_SECRET || "",
