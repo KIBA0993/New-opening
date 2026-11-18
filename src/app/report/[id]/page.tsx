@@ -9,7 +9,9 @@ import { env, PRICES } from "@/lib/env";
 import { guessIndustry, industryBySlug } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
 import { getPlace } from "@/lib/providers/places";
+import { isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
+import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { GRID_SIZE, mapGrid } from "@/lib/providers/grid";
@@ -25,6 +27,26 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   const { id: rawId } = await params;
   const id = decodeURIComponent(rawId);
   const sp = await searchParams;
+
+  // Crawlers, link previews and scripts never trigger Google or AI calls.
+  if (await looksLikeBot()) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+        <p className="eyebrow">Free check</p>
+        <h1 className="font-display mt-2 text-[2.2rem] leading-tight">See how AI assistants and Google Maps rank a local business</h1>
+        <p className="mt-2 text-ink-2">Open this link in a browser to see the results.</p>
+      </div>
+    );
+  }
+  // Visitors who haven't passed the invisible bot check (e.g. from a shared link) pass it first.
+  if (!(await isHuman())) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+        <p className="eyebrow">Free check</p>
+        <HumanCheck />
+      </div>
+    );
+  }
 
   let place: Place | null;
   if (id === "new") {

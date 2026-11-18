@@ -1,9 +1,16 @@
 import { env, has } from "@/lib/env";
+import { allowIp, spend } from "@/lib/guard";
 
 // Proxies Google place photos so the API key never reaches the browser.
 export async function GET(req: Request) {
   const name = new URL(req.url).searchParams.get("name") || "";
   if (!has.places() || !/^places\/[\w-]+\/photos\/[\w-]+$/.test(name)) return new Response(null, { status: 404 });
+  if (!(await allowIp("photo", 120, 600))) return new Response(null, { status: 429 });
+  try {
+    await spend("places");
+  } catch {
+    return new Response(null, { status: 404 });
+  }
   const res = await fetch(`https://places.googleapis.com/v1/${name}/media?maxWidthPx=480&key=${env.googlePlaces}`);
   if (!res.ok) return new Response(null, { status: 404 });
   return new Response(res.body, {

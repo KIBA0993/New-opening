@@ -101,10 +101,13 @@ export function StartFlow() {
     setStep(p.placeId === "new" && step === "details" ? "notfound" : "pick");
   }
 
-  async function finish(e: React.FormEvent) {
+  const [formError, setFormError] = useState("");
+
+  async function finish(e: React.FormEvent, guard: { token: string; hp: string }) {
     e.preventDefault();
     if (!p.email || !p.industry || !p.name) return;
     setBusy(true);
+    setFormError("");
     const profile: OwnerProfile = {
       placeId: p.placeId || "new",
       name: p.name,
@@ -121,12 +124,19 @@ export function StartFlow() {
     };
     saveProfile(profile);
     const path = reportPath(profile);
-    fetch("/api/lead", {
+    // Saves the lead and passes the invisible bot check, which the check page needs.
+    const res = await fetch("/api/lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: profile.email, name: profile.name, reportPath: path }),
-    }).catch(() => undefined);
+      body: JSON.stringify({ email: profile.email, name: profile.name, reportPath: path, token: guard.token, company_site: guard.hp }),
+    }).catch(() => null);
+    if (res && res.status === 403) {
+      setFormError("We couldn't confirm you're a person. Please try again.");
+      setBusy(false);
+      return false;
+    }
     router.push(path);
+    return true;
   }
 
   const Heading = ({ children }: { children: React.ReactNode }) => (
@@ -244,7 +254,7 @@ export function StartFlow() {
         </form>
       )}
 
-      {step === "details" && <Details p={p} setP={setP} place={place} busy={busy} onSubmit={finish} />}
+      {step === "details" && <Details p={p} setP={setP} place={place} busy={busy} onSubmit={finish} error={formError} />}
     </div>
   );
 }

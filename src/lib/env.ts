@@ -27,6 +27,12 @@ export const env = {
   authSecret: process.env.AUTH_SECRET || "",
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+  turnstileSecret: process.env.TURNSTILE_SECRET_KEY || "",
+  upstashUrl: (process.env.UPSTASH_REDIS_REST_URL || "").replace(/\/$/, ""),
+  upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  aiDailyCap: Number(process.env.AI_DAILY_CALL_CAP || 1500),
+  placesDailyCap: Number(process.env.PLACES_DAILY_CALL_CAP || 4000),
   freeChecksPerDay: Number(process.env.FREE_CHECKS_PER_DAY || 5),
 };
 

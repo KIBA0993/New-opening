@@ -1,5 +1,6 @@
 import "server-only";
 import { env, has } from "../env";
+import { spend } from "../guard";
 import { mockPlace, mockRivals, mockSearch } from "../mock";
 import type { IndustrySlug, Place } from "../types";
 
@@ -78,6 +79,7 @@ function toPlace(p: GPlace): Place {
 }
 
 async function gpost<T>(path: string, body: unknown, fields: string): Promise<T> {
+  await spend("places");
   const res = await fetch(`${BASE}/${path}`, {
     method: "POST",
     headers: {
@@ -106,6 +108,7 @@ function e164(q: string) {
 /** One box: name, address or phone. */
 /** Older Find Place endpoint. Returns null when the project doesn't have the older Places API turned on. */
 async function findByPhoneLegacy(q: string): Promise<Place[] | null> {
+  await spend("places");
   const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
   url.searchParams.set("input", e164(q));
   url.searchParams.set("inputtype", "phonenumber");
@@ -166,6 +169,11 @@ export async function autocomplete(input: string, sessionToken: string) {
 
 export async function getPlace(id: string, sessionToken?: string): Promise<Place | null> {
   if (id.startsWith("demo_") || !has.places()) return mockPlace(id);
+  try {
+    await spend("places");
+  } catch {
+    return null;
+  }
   const url = new URL(`${BASE}/places/${encodeURIComponent(id)}`);
   if (sessionToken) url.searchParams.set("sessionToken", sessionToken);
   const res = await fetch(url, {
@@ -242,6 +250,11 @@ export function reviewLink(placeId: string) {
 /** Up to 5 of the newest reviews Google shares publicly, for drafting replies. */
 export async function latestReviews(placeId: string): Promise<{ author: string; rating: number; text: string; when: string }[]> {
   if (!has.places() || placeId.startsWith("demo_") || placeId === "new") return [];
+  try {
+    await spend("places");
+  } catch {
+    return [];
+  }
   const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
     headers: { "X-Goog-Api-Key": env.googlePlaces, "X-Goog-FieldMask": "reviews" },
     cache: "no-store",

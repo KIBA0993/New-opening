@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { allowIp } from "@/lib/guard";
 import { createTopup, getAccount } from "@/lib/credits";
 
 const Body = z.object({ session_id: z.string().min(5).max(2000) });
 
 export async function POST(req: Request) {
+  if (!(await allowIp("topup", 10, 600))) return NextResponse.json({ error: "Too many tries. Please wait a few minutes." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Missing subscription link." }, { status: 400 });
   const account = await getAccount(parsed.data.session_id);

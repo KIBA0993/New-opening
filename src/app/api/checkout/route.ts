@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { allowIp } from "@/lib/guard";
 import { createCheckout } from "@/lib/billing";
 
 const Body = z.object({
@@ -21,6 +22,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!(await allowIp("checkout", 10, 600))) return NextResponse.json({ error: "Too many tries. Please wait a few minutes." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Some details are missing. Please go back and check them." }, { status: 400 });
   try {

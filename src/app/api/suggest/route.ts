@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { clientIp } from "@/lib/ratelimit";
+import { allowIp } from "@/lib/guard";
 import { suggestAnswers, templateSuggestion } from "@/lib/suggest";
 
 export const maxDuration = 30;
@@ -16,16 +16,10 @@ const Body = z.object({
   website: z.string().max(400).optional(),
 });
 
-// Each new business costs one AI call (then it's cached), so cap it per visitor.
-const recent = new Map<string, number[]>();
-
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Missing business details." }, { status: 400 });
-  const ip = await clientIp();
-  const now = Date.now();
-  const hits = (recent.get(ip) || []).filter((t) => now - t < 60 * 60_000);
-  if (hits.length >= 20) return NextResponse.json(templateSuggestion(parsed.data));
-  recent.set(ip, [...hits, now]);
+  // Each new business costs one AI call (then it's cached), so cap it per visitor.
+  if (!(await allowIp("suggest", 20, 3600))) return NextResponse.json(templateSuggestion(parsed.data));
   return NextResponse.json(await suggestAnswers(parsed.data));
 }

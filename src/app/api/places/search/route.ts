@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { guessIndustry } from "@/lib/industries";
+import { allowIp } from "@/lib/guard";
 import { searchBusinesses } from "@/lib/providers/places";
 
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim() || "";
   if (q.length < 2 || q.length > 200) return NextResponse.json({ places: [], demo: false });
+  if (!(await allowIp("search", 30, 600))) {
+    return NextResponse.json({ error: "Too many searches. Please wait a few minutes and try again.", places: [] }, { status: 429 });
+  }
   try {
     const { places, demo } = await searchBusinesses(q);
     return NextResponse.json({

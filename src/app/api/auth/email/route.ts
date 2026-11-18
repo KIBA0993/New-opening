@@ -3,21 +3,21 @@ import { z } from "zod";
 import { magicLink, safeNext } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { has } from "@/lib/env";
-import { clientIp } from "@/lib/ratelimit";
+import { allow, allowIp, trippedHoneypot, verifyTurnstile } from "@/lib/guard";
 
-const Body = z.object({ email: z.string().email().max(200), next: z.string().max(500).optional() });
-
-// Small per-IP cap so the form can't be used to spam inboxes. In-memory, like the free-check limit.
-const sent = new Map<string, number[]>();
+const Body = z.object({ email: z.string().email().max(200), next: z.string().max(500).optional(), token: z.string().max(4000).optional() });
 
 export async function POST(req: Request) {
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+  const raw = await req.json().catch(() => null);
+  if (trippedHoneypot(raw)) return NextResponse.json({ ok: true }); // pretend it worked
+  const parsed = Body.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
-  const ip = await clientIp();
-  const now = Date.now();
-  const recent = (sent.get(ip) || []).filter((t) => now - t < 10 * 60_000);
-  if (recent.length >= 5) return NextResponse.json({ error: "Too many sign-in emails. Please wait a few minutes." }, { status: 429 });
-  sent.set(ip, [...recent, now]);
+  if (!(await verifyTurnstile(parsed.data.token))) return NextResponse.json({ error: "We couldn't confirm you're a person. Please try again." }, { status: 403 });
+  if (!(await allowIp("signin", 5, 600))) return NextResponse.json({ error: "Too many sign-in emails. Please wait a few minutes." }, { status: 429 });
+  // Cap per address too, so nobody can flood someone else's inbox.
+  if (!(await allow("signin-email", parsed.data.email.toLowerCase(), 3, 3600))) {
+    return NextResponse.json({ error: "We've sent several links to this email already. Please check your inbox, or wait an hour." }, { status: 429 });
+  }
 
   let link: string;
   try {

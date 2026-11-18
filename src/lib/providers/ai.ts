@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { spend } from "../guard";
 import type { z } from "zod";
 import { env, has } from "../env";
 import type { Engine } from "../types";
@@ -94,6 +95,7 @@ async function askGemini(prompt: string): Promise<string> {
 }
 
 export async function askEngine(engine: Engine, prompt: string, city?: string): Promise<string> {
+  await spend("ai");
   if (engine === "chatgpt") return askOpenAI(prompt);
   if (engine === "claude") return askClaude(prompt, city);
   if (engine === "perplexity") return askPerplexity(prompt);
@@ -112,6 +114,11 @@ export const cachedAsk = unstable_cache(
 
 /** Write structured content (profiles, emails). Claude first, then OpenAI. Returns null when no writer is configured. */
 export async function writeJSON<S extends z.ZodType>(system: string, user: string, schema: S): Promise<z.infer<S> | null> {
+  try {
+    await spend("ai");
+  } catch {
+    return null;
+  }
   if (has.anthropic()) {
     try {
       return await claudeWrite(system, user, schema);
@@ -148,6 +155,11 @@ export async function writeJSON<S extends z.ZodType>(system: string, user: strin
 
 /** Ask a web-searching model for JSON (Claude first, then Perplexity, then ChatGPT with search). */
 export async function searchJSON<T>(prompt: string, city?: string): Promise<T | null> {
+  try {
+    await spend("ai");
+  } catch {
+    return null;
+  }
   if (has.anthropic()) {
     try {
       return await claudeSearchJSON<T>(prompt, city);

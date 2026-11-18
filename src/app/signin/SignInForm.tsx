@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Honeypot, Turnstile, TURNSTILE_FAILED, TURNSTILE_SITE_KEY } from "@/components/Turnstile";
 
 export function SignInForm({ next, google }: { next: string; google: boolean }) {
   const [email, setEmail] = useState("");
@@ -7,13 +8,19 @@ export function SignInForm({ next, google }: { next: string; google: boolean }) 
   const [sentTo, setSentTo] = useState("");
   const [sampleLink, setSampleLink] = useState("");
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
+  const [hp, setHp] = useState("");
+  const [resetKey, setResetKey] = useState(0);
+  const [tsFailed, setTsFailed] = useState(false);
+  const needToken = !!TURNSTILE_SITE_KEY && !token;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, next }) });
+      const res = await fetch("/api/auth/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, next, token, company_site: hp }) });
+      setResetKey((k) => k + 1);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSentTo(email);
@@ -51,9 +58,12 @@ export function SignInForm({ next, google }: { next: string; google: boolean }) 
         </>
       ) : null}
       <form onSubmit={submit}>
+        <Honeypot value={hp} onChange={setHp} />
         <label htmlFor="email" className="font-semibold">Email</label>
         <input id="email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourbusiness.com" className="field mt-2" />
-        <button type="submit" disabled={busy} className="btn btn-primary mt-4 w-full !min-h-[52px]">{busy ? "Sending…" : "Email me a sign-in link"}</button>
+        <Turnstile onToken={setToken} onError={() => setTsFailed(true)} resetKey={resetKey} />
+        {tsFailed ? <p role="alert" className="mt-3 text-bad">{TURNSTILE_FAILED}</p> : null}
+        <button type="submit" disabled={busy || needToken} className="btn btn-primary mt-4 w-full !min-h-[52px]">{busy ? "Sending…" : needToken ? (tsFailed ? "Bot check didn't load" : "Checking you're not a bot…") : "Email me a sign-in link"}</button>
         {error ? <p role="alert" className="mt-3 text-bad">{error}</p> : null}
       </form>
       <p className="mt-4 text-[0.9rem] text-ink-3">Use the email you paid with. No password needed.</p>

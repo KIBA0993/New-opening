@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Honeypot, Turnstile, TURNSTILE_FAILED, TURNSTILE_SITE_KEY } from "@/components/Turnstile";
 import { INDUSTRIES, industryBySlug } from "@/lib/industries";
 import type { IndustrySlug, OwnerProfile, Place } from "@/lib/types";
 
@@ -70,13 +71,20 @@ export function Details({
   place,
   busy,
   onSubmit,
+  error,
 }: {
   p: Draft;
   setP: (fn: (x: Draft) => Draft) => void;
   place: (Place & { industryGuess?: IndustrySlug }) | null;
   busy: boolean;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent, guard: { token: string; hp: string }) => Promise<boolean | void>;
+  error?: string;
 }) {
+  const [token, setToken] = useState("");
+  const [hp, setHp] = useState("");
+  const [resetKey, setResetKey] = useState(0);
+  const [tsFailed, setTsFailed] = useState(false);
+  const needToken = !!TURNSTILE_SITE_KEY && !token;
   const t0 = template(p.industry, p.city);
   const [services, setServices] = useState<string[]>(p.services ? split(p.services) : t0.services);
   const [loading, setLoading] = useState(false);
@@ -132,7 +140,13 @@ export function Details({
   const menu = industry?.menuWord === "menu";
 
   return (
-    <form onSubmit={onSubmit}>
+    <form
+      onSubmit={async (e) => {
+        const ok = await onSubmit(e, { token, hp });
+        if (ok === false) setResetKey((k) => k + 1); // tokens are single-use: get a new one
+      }}
+    >
+      <Honeypot value={hp} onChange={setHp} />
       <h1 tabIndex={-1} className="no-ring font-display text-[2rem] leading-tight sm:text-[2.4rem]">
         {place ? "We filled this in from Google" : "Tell us a little more"}
       </h1>
@@ -237,9 +251,12 @@ export function Details({
           const email = e.target.value;
           setP((x) => ({ ...x, email }));
         }} />
-        <button className="btn btn-accent mt-5 w-full !min-h-[56px] text-[1.05rem]" disabled={busy || !p.industry || !services.length}>
-          {busy ? "Starting your check…" : "Run my free check"}
+        <Turnstile onToken={setToken} onError={() => setTsFailed(true)} resetKey={resetKey} />
+        {tsFailed ? <p role="alert" className="mt-3 text-bad">{TURNSTILE_FAILED}</p> : null}
+        <button className="btn btn-accent mt-5 w-full !min-h-[56px] text-[1.05rem]" disabled={busy || !p.industry || !services.length || needToken}>
+          {busy ? "Starting your check…" : needToken ? (tsFailed ? "Bot check didn't load" : "Checking you're not a bot…") : "Run my free check"}
         </button>
+        {error ? <p role="alert" className="mt-3 text-bad">{error}</p> : null}
         <p className="mt-3 text-[0.9rem] text-ink-3">
           {!p.industry ? "Pick your type of business first. " : !services.length ? `Add at least one ${menu ? "menu item" : "service"}. ` : ""}
           We&apos;ll email you a link to your results. No spam.

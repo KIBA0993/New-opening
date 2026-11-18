@@ -21,9 +21,13 @@ function secret() {
 const b64 = (s: string | Buffer) => Buffer.from(s).toString("base64url");
 const sign = (data: string) => createHmac("sha256", secret()).update(data).digest("base64url");
 
-function seal(payload: Record<string, unknown>) {
+export function seal(payload: Record<string, unknown>) {
   const data = b64(JSON.stringify(payload));
   return `${data}.${sign(data)}`;
+}
+
+export function unseal<T>(token: string | undefined): T | null {
+  return open<T>(token);
 }
 
 function open<T>(token: string | undefined): T | null {

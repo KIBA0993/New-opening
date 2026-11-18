@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { allowIp } from "@/lib/guard";
 import { getAccount, spendCredit } from "@/lib/credits";
 import { getPlace } from "@/lib/providers/places";
 import { freshCheck } from "@/lib/report";
@@ -11,6 +12,7 @@ const Body = z.object({ session_id: z.string().min(5).max(2000) });
 
 // Autopilot re-check: runs the AI questions again, skipping the cache, and uses one credit.
 export async function POST(req: Request) {
+  if (!(await allowIp("recheck", 10, 600))) return NextResponse.json({ error: "Too many tries. Please wait a few minutes." }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Missing subscription link." }, { status: 400 });
   const account = await getAccount(parsed.data.session_id);
