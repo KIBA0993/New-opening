@@ -11,6 +11,33 @@ import { Details } from "./Details";
 type Found = Place & { industryGuess?: IndustrySlug };
 type Step = "loading" | "pick" | "notfound" | "details";
 
+const BUY_KEY = "md_buy";
+const BUY_PRODUCTS = ["kit", "kit_only", "monthly", "yearly"];
+
+/** Remembers a Buy click across the search steps (which reload /start) for 30 minutes. */
+function pendingBuy(fromUrl: string | null, midFlow: boolean): string | null {
+  try {
+    if (fromUrl && BUY_PRODUCTS.includes(fromUrl)) {
+      sessionStorage.setItem(BUY_KEY, JSON.stringify({ p: fromUrl, at: Date.now() }));
+      return fromUrl;
+    }
+    if (!midFlow) {
+      sessionStorage.removeItem(BUY_KEY); // a fresh free check, not a purchase
+      return null;
+    }
+    const saved = JSON.parse(sessionStorage.getItem(BUY_KEY) || "null");
+    return saved && Date.now() - saved.at < 30 * 60_000 && BUY_PRODUCTS.includes(saved.p) ? saved.p : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearBuy() {
+  try {
+    sessionStorage.removeItem(BUY_KEY);
+  } catch {}
+}
+
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -22,6 +49,11 @@ export function StartFlow() {
   const placeParam = params.get("place");
   const token = params.get("token") || "";
   const presetIndustry = params.get("industry") as IndustrySlug | null;
+  // Came from a Buy button: after the details step, go straight to checkout instead of the report.
+  const [buy, setBuy] = useState<string | null>(null);
+  useEffect(() => {
+    setBuy(pendingBuy(params.get("buy"), !!(q || placeParam)));
+  }, [params, q, placeParam]);
 
   const [step, setStep] = useState<Step>(q || placeParam ? "loading" : "pick");
   const [results, setResults] = useState<Found[]>([]);
@@ -144,6 +176,18 @@ export function StartFlow() {
       return false;
     }
     track("details", { industry: profile.industry });
+    if (buy) {
+      clearBuy();
+      const r = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ product: buy, profile }) }).catch(() => null);
+      const data = r ? await r.json().catch(() => ({})) : {};
+      if (data.url) {
+        window.location.href = data.url;
+        return true;
+      }
+      setFormError(data.error || "Checkout didn't open. Please try again.");
+      setBusy(false);
+      return false;
+    }
     router.push(path);
     return true;
   }
@@ -225,7 +269,7 @@ export function StartFlow() {
           ) : (
             <>
               <Heading>Let's find your business</Heading>
-              <p className="mt-2 text-ink-2">Type its name, address or phone number.</p>
+              <p className="mt-2 text-ink-2">Type its name, address or phone number.{buy ? " We write everything for your business, so we need to know which one it is. Then it's straight to secure checkout." : ""}</p>
               {error ? <p role="alert" className="mt-3 rounded-xl bg-bad-bg p-3 text-bad">{error}</p> : null}
               <div className="mt-6">
                 <SearchBox industry={presetIndustry || undefined} autoFocus size="md" />
@@ -263,7 +307,7 @@ export function StartFlow() {
         </form>
       )}
 
-      {step === "details" && <Details p={p} setP={setP} place={place} busy={busy} onSubmit={finish} error={formError} />}
+      {step === "details" && <Details p={p} setP={setP} place={place} busy={busy} onSubmit={finish} error={formError} checkout={!!buy} />}
     </div>
   );
 }

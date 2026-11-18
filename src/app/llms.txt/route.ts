@@ -6,6 +6,7 @@ import { SITE_URL } from "@/lib/site";
 
 // llms.txt: a plain summary for AI assistants (https://llmstxt.org).
 export const dynamic = "force-static";
+export const revalidate = 3600; // prices change when the launch deal ends
 
 export function GET() {
   const body = `# MapDebut

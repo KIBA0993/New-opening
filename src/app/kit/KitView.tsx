@@ -4,9 +4,19 @@ import QRCode from "qrcode";
 import { useEffect, useMemo, useState } from "react";
 import { CopyBlock, CopyButton } from "@/components/CopyButton";
 import { DemoTag } from "@/components/ui";
+import { BuyButton } from "@/components/BuyButton";
 import type { Directory } from "@/lib/directories";
 import type { PlatformGuide } from "@/lib/platforms";
 import type { LaunchKit, OwnerProfile } from "@/lib/types";
+
+/** The Kit buyer's Autopilot: on (free week or paid), cancelled, or not bought (offer it). */
+export type AutopilotState = {
+  trial: { status: string; renews: string | null; price: string; cancelUrl: string } | null;
+  accountUrl: string;
+  monthly: string;
+  yearly: string;
+  save: number;
+};
 
 interface Props {
   kit: LaunchKit;
@@ -19,12 +29,13 @@ interface Props {
   directories: Directory[];
   schema: string;
   robots: string;
+  autopilot: AutopilotState;
 }
 
 const STEP_IDS = ["details", "facts", "google", "verify", "apple", "bing", "yelp", "facebook", "chatgpt", "directories", "website", "reviews"] as const;
 type StepId = (typeof STEP_IDS)[number];
 
-export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots }: Props) {
+export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot }: Props) {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [qr, setQr] = useState("");
   const key = `od_kit_${storeKey.slice(-24)}`;
@@ -285,13 +296,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </p>
         </Step>
 
-        <section className="mt-14 rounded-3xl bg-ink p-6 text-paper sm:p-9">
-          <h2 className="font-display text-[1.8rem] leading-tight">Done setting up? Now stay found.</h2>
-          <p className="mt-2 text-[#d9d1c3]">
-            Most owners set up their profile once and never touch it again. The Weekly Autopilot sends you one email each Monday: whether AI tools are naming you yet, what your rivals did, a post and review replies ready to paste, and local events worth joining.
-          </p>
-          <Link href="/autopilot" className="btn btn-accent mt-5">See a sample email</Link>
-        </section>
+        <AutopilotSection a={autopilot} profile={profile} />
       </div>
 
       {/* Printable review card */}
@@ -402,5 +407,47 @@ function VerificationCoach({ serviceArea, industryName }: { serviceArea: boolean
         <b>After you&apos;re verified:</b> make your remaining edits in one sitting, then leave it alone for a few weeks. Check weekly for &ldquo;suggested edits&rdquo; from the public, because Google can apply them automatically.
       </p>
     </div>
+  );
+}
+
+function AutopilotSection({ a, profile }: { a: AutopilotState; profile: OwnerProfile }) {
+  const t = a.trial;
+  const on = t && ["trialing", "active", "past_due"].includes(t.status);
+  return (
+    <section className="mt-14 rounded-3xl bg-ink p-6 text-paper sm:p-9">
+      {on ? (
+        <>
+          <h2 className="font-display text-[1.8rem] leading-tight">Your Weekly Autopilot is on.</h2>
+          <p className="mt-2 text-[#d9d1c3]">
+            {t.status === "trialing"
+              ? `Your free week runs until ${t.renews}. After that it renews at ${t.price} until you cancel. Your first email is on its way, then one arrives every Monday.`
+              : `It renews on ${t.renews} at ${t.price}. One email every Monday.`}
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <Link href={a.accountUrl} className="btn btn-accent">Your re-checks</Link>
+            <a href={t.cancelUrl} className="text-[#e3dccf] underline underline-offset-4">Cancel the Autopilot</a>
+          </div>
+          <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">Cancelling stops the Autopilot only. Your Launch Kit stays yours.</p>
+        </>
+      ) : t && t.status === "canceled" ? (
+        <>
+          <h2 className="font-display text-[1.8rem] leading-tight">Your Autopilot is cancelled.</h2>
+          <p className="mt-2 text-[#d9d1c3]">{t.renews ? `It keeps running until ${t.renews}, and you won't be charged again.` : "You won't be charged again."} Your Launch Kit stays yours.</p>
+        </>
+      ) : (
+        <>
+          <h2 className="font-display text-[1.8rem] leading-tight">Done setting up? Now stay found.</h2>
+          <p className="mt-2 text-[#d9d1c3]">
+            Most owners set up their profile once and never touch it again. The Weekly Autopilot sends you one email each Monday: whether AI tools are naming you yet, what your rivals did, a post and review replies ready to paste, and local events worth joining.
+          </p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <BuyButton product="monthly" placeId={profile.placeId} industry={profile.industry} className="btn btn-accent w-full sm:w-auto">Start for {a.monthly}/month</BuyButton>
+            <BuyButton product="yearly" placeId={profile.placeId} industry={profile.industry} className="btn w-full border border-[#e3dccf] !bg-transparent !text-paper hover:!bg-white/10 sm:w-auto">{a.yearly}/year{a.save > 0 ? `, save $${a.save}` : ""}</BuyButton>
+            <Link href="/autopilot" className="text-[#e3dccf] underline underline-offset-4">See a sample email</Link>
+          </div>
+          <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">Cancel any time.</p>
+        </>
+      )}
+    </section>
   );
 }

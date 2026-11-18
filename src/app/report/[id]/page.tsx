@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { KitTrialNote } from "@/components/KitTrialNote";
 import { BuyButton } from "@/components/BuyButton";
 import { CopyButton } from "@/components/CopyButton";
 import { TrackOnce } from "@/components/TrackOnce";
@@ -14,11 +15,12 @@ import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
 import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
-import { kitPrice, launchNote } from "@/lib/pricing";
+import { kitPrice, launchNote, type KitPrice } from "@/lib/pricing";
+import { DEAL, dealOn } from "@/lib/deal";
 import { MapGrid } from "@/components/MapGrid";
 import { aiReport, aiSummary, checkContext, citationGaps, engineReadiness, findFixes, PLATFORM_LABEL, readiness, visibility } from "@/lib/report";
 import { cache } from "react";
-import { EmailReport, ShowFew, StickyKitBar } from "./ReportClient";
+import { EmailReport, ShowFew, StickyBuyBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Your free check", robots: { index: false } };
@@ -87,6 +89,9 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       {allowed ? (
         <>
           <TrackOnce name="check_started" data={{ industry }} />
+          <Suspense fallback={<QuickOfferView place={place} industry={industry} kit={null} />}>
+            <QuickOffer place={place} industry={industry} />
+          </Suspense>
           <Suspense fallback={<AISkeleton engines={engineNames()} />}>
             <VisibilityHero place={place} industry={industry} />
             <TopFixes place={place} industry={industry} />
@@ -401,6 +406,42 @@ const standing = cache(async (place: Place, industry: IndustrySlug) => {
 
 const REFUND = "14-day money-back promise.";
 
+/**
+ * The offer, on the first screen and before the slow checks finish, so buying never waits on
+ * the AI answers or the Maps grid. Also mounts the sticky buy bar (phone and desktop).
+ */
+async function QuickOffer({ place, industry }: { place: Place; industry: IndustrySlug }) {
+  return <QuickOfferView place={place} industry={industry} kit={await kitPrice()} />;
+}
+
+function QuickOfferView({ place, industry, kit }: { place: Place; industry: IndustrySlug; kit: KitPrice | null }) {
+  const yearly = `${PRICES.yearly.label}/yr`;
+  return (
+    <section id="offer" aria-label="Fix it with the Launch Kit" className="card mt-6 border-ink p-5 outline outline-1 outline-ink sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold">Fix everything this check finds, in one afternoon.</p>
+          <p className="text-[0.95rem] text-ink-3">
+            Launch Kit{kit ? ` · ${kit.label} one time` : ""}: every profile written for you, a verification coach and guided setup on 6 platforms.
+          </p>
+        </div>
+        <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full shrink-0 !min-h-[52px] sm:w-auto">
+          Get my Launch Kit{kit ? ` · ${kit.label}` : ""}
+        </BuyButton>
+      </div>
+      <KitTrialNote placeId={place.id} industry={industry} className="mt-3" />
+      <p className="mt-2 text-[0.88rem] text-ink-3">
+        {kit && kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}
+        Just want the weekly email?{" "}
+        <BuyButton product="monthly" placeId={place.id} industry={industry} className="inline font-semibold text-ink-2 underline underline-offset-4">Autopilot {PRICES.monthly.label}/mo</BuyButton>
+        {" or "}
+        <BuyButton product="yearly" placeId={place.id} industry={industry} className="inline font-semibold text-ink-2 underline underline-offset-4">{yearly}</BuyButton>. {REFUND}
+      </p>
+      {kit ? <StickyBuyBar placeId={place.id} industry={industry} kitLabel={kit.label} endsAt={dealOn() ? DEAL.endsAt : null} /> : null}
+    </section>
+  );
+}
+
 /** One line at the end of each section, pointing back to the offer. */
 function KitLine({ children }: { children: React.ReactNode }) {
   return (
@@ -442,20 +483,21 @@ async function TopFixes({ place, industry }: { place: Place; industry: IndustryS
             <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
               Stay on top · {PRICES.monthly.label}/mo
             </BuyButton>
-            {top.length ? <BuyButton product="kit" placeId={place.id} industry={industry} className="link text-left">Or fix these once for {kit.label}</BuyButton> : null}
+            <BuyButton product="yearly" placeId={place.id} industry={industry} className="link text-left">or {PRICES.yearly.label}/year{PRICES.yearly.save > 0 ? `, save $${PRICES.yearly.save}` : ""}</BuyButton>
+            {top.length ? <BuyButton product="kit_only" placeId={place.id} industry={industry} className="link text-left">Or fix these once for {kit.label}</BuyButton> : null}
           </div>
         ) : (
           <div className="mt-6">
             <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
               Fix {top.length > 1 ? "these" : "this"} for {kit.label}
             </BuyButton>
+            <KitTrialNote placeId={place.id} industry={industry} className="mt-3" />
           </div>
         )}
         <p className="mt-3 text-[0.9rem] text-ink-3">
           {fixes.length > top.length ? `Your kit covers all ${fixes.length} fixes. ` : ""}One-time payment. {REFUND}
         </p>
       </section>
-      {fixes.length && !strong ? <StickyKitBar label={`${fixes.length} ${fixes.length === 1 ? "fix" : "fixes"} found · Launch Kit ${kit.label}`} /> : null}
     </>
   );
 }
@@ -487,7 +529,10 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
             </ul>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
               {autoBtn}
-              <BuyButton product="kit" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
+              <BuyButton product="yearly" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
+                Or {PRICES.yearly.label}/year{PRICES.yearly.save > 0 ? `, save $${PRICES.yearly.save}` : ""}
+              </BuyButton>
+              <BuyButton product="kit_only" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
                 Or get the one-time Launch Kit · {kit.label}
               </BuyButton>
             </div>
@@ -509,6 +554,7 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
                 Or keep watch weekly · {PRICES.monthly.label}/mo
               </BuyButton>
             </div>
+            <KitTrialNote placeId={place.id} industry={industry} dark className="mt-3" />
             <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment. {REFUND} Secure checkout by Stripe.</p>
           </>
         )}

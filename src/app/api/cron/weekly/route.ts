@@ -3,7 +3,7 @@ import { composeDigest, packSnapshot, unpackSnapshot } from "@/lib/digest";
 import { metadataToProfile, stripe } from "@/lib/billing";
 import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
-import { firstEmailJustSent } from "@/lib/welcome";
+import { firstEmailJustSent, trialNotice } from "@/lib/welcome";
 import { alertOwner } from "@/lib/alert";
 
 export const maxDuration = 300;
@@ -17,7 +17,8 @@ export async function GET(req: Request) {
 
   let sent = 0;
   const failed: string[] = [];
-  for await (const sub of stripe().subscriptions.list({ status: "active", limit: 100, expand: ["data.customer"] })) {
+  for await (const sub of stripe().subscriptions.list({ status: "all", limit: 100, expand: ["data.customer"] })) {
+    if (sub.status !== "active" && sub.status !== "trialing") continue; // trialing = a Kit buyer's free week
     const profile = metadataToProfile(sub.metadata as Record<string, string>);
     const customer = sub.customer as { email?: string | null };
     const to = profile?.email || customer?.email;
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       const html = renderDigestHtml(digest, {
         report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
         account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
+        trial: trialNotice(sub, checkout?.id),
       });
       const res = await sendEmail(to, `${digest.business}: your 5-minute week`, html);
       if (!res.ok) throw new Error("email not accepted");

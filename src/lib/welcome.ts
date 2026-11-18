@@ -1,4 +1,5 @@
 import "server-only";
+import type Stripe from "stripe";
 import { metadataToProfile, stripe } from "./billing";
 import { composeDigest, packSnapshot } from "./digest";
 import { env } from "./env";
@@ -28,6 +29,7 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
     const html = renderDigestHtml(digest, {
       report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
       account: sid ? `${env.siteUrl}/autopilot/account?session_id=${sid}` : undefined,
+      trial: trialNotice(sub, sid),
     });
     const res = await sendEmail(to, `${digest.business}: your first 5-minute week`, html);
     if (!res.ok) throw new Error("email not accepted");
@@ -38,6 +40,17 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
     await stripe().subscriptions.update(subId, { metadata: { w1: "" } }).catch(() => undefined);
     return "failed";
   }
+}
+
+/** While a Kit buyer's free Autopilot week runs: when it renews, at what price, and the cancel link. */
+export function trialNotice(sub: Stripe.Subscription, sessionId?: string) {
+  if (sub.status !== "trialing" || !sub.trial_end || !sessionId) return undefined;
+  const cents = sub.items.data[0]?.price?.unit_amount;
+  return {
+    renews: new Date(sub.trial_end * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+    price: cents ? `$${Math.round(cents / 100)}/month` : "the monthly price",
+    cancelUrl: `${env.siteUrl}/api/cancel?session_id=${encodeURIComponent(sessionId)}`,
+  };
 }
 
 /** True when the first email went out in the last 3 days, so Monday's email can wait a week. */

@@ -72,6 +72,7 @@ export function Details({
   busy,
   onSubmit,
   error,
+  checkout = false,
 }: {
   p: Draft;
   setP: (fn: (x: Draft) => Draft) => void;
@@ -79,6 +80,7 @@ export function Details({
   busy: boolean;
   onSubmit: (e: React.FormEvent, guard: { token: string; hp: string }) => Promise<boolean | void>;
   error?: string;
+  checkout?: boolean;
 }) {
   const [token, setToken] = useState("");
   const [hp, setHp] = useState("");
@@ -254,7 +256,7 @@ export function Details({
         <Turnstile onToken={setToken} onError={() => setTsFailed(true)} resetKey={resetKey} />
         {tsFailed ? <p role="alert" className="mt-3 text-bad">{TURNSTILE_FAILED}</p> : null}
         <button className="btn btn-accent mt-5 w-full !min-h-[56px] text-[1.05rem]" disabled={busy || !p.industry || !services.length || needToken}>
-          {busy ? "Starting your check…" : needToken ? (tsFailed ? "Bot check didn't load" : "Checking you're not a bot…") : "Run my free check"}
+          {busy ? (checkout ? "Opening secure checkout…" : "Starting your check…") : needToken ? (tsFailed ? "Bot check didn't load" : "Checking you're not a bot…") : checkout ? "Continue to checkout" : "Run my free check"}
         </button>
         {error ? <p role="alert" className="mt-3 text-bad">{error}</p> : null}
         <p className="mt-3 text-[0.9rem] text-ink-3">

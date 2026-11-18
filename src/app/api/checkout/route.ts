@@ -7,7 +7,7 @@ import { recordEvent } from "@/lib/stats";
 import { createCheckout } from "@/lib/billing";
 
 const Body = z.object({
-  product: z.enum(["kit", "monthly", "yearly"]),
+  product: z.enum(["kit", "kit_only", "monthly", "yearly"]),
   profile: z.object({
     placeId: z.string().min(1).max(300),
     name: z.string().min(1).max(200),

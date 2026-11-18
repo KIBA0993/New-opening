@@ -3,8 +3,8 @@ import Link from "next/link";
 import { after } from "next/server";
 import { Suspense } from "react";
 import { BuyerMapGrid } from "@/components/MapGrid";
-import { paidSession } from "@/lib/billing";
-import { has } from "@/lib/env";
+import { kitTrial, paidSession } from "@/lib/billing";
+import { has, PRICES } from "@/lib/env";
 import { sendKitEmail } from "@/lib/fulfill";
 import { industryBySlug } from "@/lib/industries";
 import { AI_ROBOTS, businessSchema, writeKit } from "@/lib/kit";
@@ -33,7 +33,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
   }
 
   const { profile } = paid;
-  const kit = await writeKit(session_id, profile);
+  const [kit, trial] = await Promise.all([writeKit(session_id, profile), kitTrial(session_id)]);
   const industry = industryBySlug(profile.industry)!;
 
   // Email the kit link once, so the owner can always get back here.
@@ -52,6 +52,13 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       directories={directoriesFor(profile.industry)}
       schema={businessSchema(profile, kit, industry.serviceArea)}
       robots={AI_ROBOTS}
+      autopilot={{
+        trial,
+        accountUrl: `/autopilot/account?session_id=${encodeURIComponent(session_id)}`,
+        monthly: PRICES.monthly.label,
+        yearly: PRICES.yearly.label,
+        save: PRICES.yearly.save,
+      }}
     />
     <div className="mx-auto max-w-3xl px-4 sm:px-6">
       <Suspense fallback={null}>

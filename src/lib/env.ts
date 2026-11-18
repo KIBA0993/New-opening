@@ -1,3 +1,5 @@
+import { autopilotPrices } from "./deal";
+
 // Every outside service is optional. When a key is missing, that part of the
 // app falls back to realistic demo data and the UI shows a "Demo data" tag.
 
@@ -53,7 +55,12 @@ export const has = {
   resend: () => !!env.resend,
 };
 
+// Autopilot prices, read fresh on every use so they switch on their own when the launch deal ends.
 export const PRICES = {
-  monthly: { amount: 39, label: "$39", note: "per month" },
-  yearly: { amount: 349, label: "$349", note: "per year (save $119)" },
+  get monthly() {
+    return autopilotPrices().monthly;
+  },
+  get yearly() {
+    return autopilotPrices().yearly;
+  },
 };
