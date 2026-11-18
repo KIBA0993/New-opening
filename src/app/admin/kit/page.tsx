@@ -8,6 +8,7 @@ import { guessIndustry, industryBySlug } from "@/lib/industries";
 import { AI_ROBOTS, businessSchema, writeKit } from "@/lib/kit";
 import { GUIDES } from "@/lib/platforms";
 import { getPlace, reviewLink, searchBusinesses } from "@/lib/providers/places";
+import { visitorLocation } from "@/lib/geo";
 import { suggestAnswers } from "@/lib/suggest";
 import type { IndustrySlug, OwnerProfile } from "@/lib/types";
 import { KitView } from "../../kit/KitView";
@@ -18,28 +19,32 @@ export const metadata: Metadata = { title: "Kit preview", robots: { index: false
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-type SP = Promise<{ q?: string; place?: string; industry?: string }>;
+type SP = Promise<{ q?: string; near?: string; place?: string; industry?: string }>;
 
 export default async function KitPreview({ searchParams }: { searchParams: SP }) {
   if (!(await isAdmin())) redirect("/admin");
-  const { q, place: placeId, industry: ind } = await searchParams;
+  const { q, near, place: placeId, industry: ind } = await searchParams;
 
   if (!placeId) {
-    const found = q ? (await searchBusinesses(q)).places : [];
+    // A city in "near" wins; otherwise results lean toward where you are.
+    const found = q ? (await searchBusinesses(near ? `${q} near ${near}` : q, near ? null : await visitorLocation())).places : [];
     return (
       <div className="mx-auto max-w-xl px-4 pt-12">
         <p className="eyebrow">Admin</p>
         <h1 className="font-display mt-2 text-[2rem]">Preview a Launch Kit</h1>
-        <form className="mt-5 flex gap-2">
-          <input name="q" defaultValue={q} placeholder="Business name and city" className="field" required />
-          <button className="btn btn-primary shrink-0">Search</button>
+        <form className="mt-5 grid gap-2 sm:grid-cols-[1fr_12rem_auto]">
+          <input name="q" defaultValue={q} placeholder="Business name" aria-label="Business name" className="field" required />
+          <input name="near" defaultValue={near} placeholder="City, e.g. Johns Creek, GA" aria-label="City" className="field" />
+          <button className="btn btn-primary">Search</button>
         </form>
+        <p className="mt-2 text-[0.9rem] text-ink-3">Tip: open any report while signed in as admin and use its &ldquo;Preview kit&rdquo; link to skip searching.</p>
         <ul className="mt-6 space-y-2">
           {found.map((p) => (
             <li key={p.id}>
               <Link href={`/admin/kit?place=${encodeURIComponent(p.id)}`} className="card block p-4 hover:border-ink">
-                <span className="block font-semibold">{p.name}</span>
-                <span className="text-ink-3">{p.address}</span>
+                <span className="block font-semibold">{p.city || p.address}</span>
+                <span className="block">{p.name}</span>
+                <span className="text-[0.9rem] text-ink-3">{p.address}</span>
               </Link>
             </li>
           ))}

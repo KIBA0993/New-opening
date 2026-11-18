@@ -13,6 +13,7 @@ import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
 import { getPlace } from "@/lib/providers/places";
 import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
+import { isAdmin } from "@/lib/admin";
 import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote, type KitPrice } from "@/lib/pricing";
@@ -85,6 +86,11 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       <p className="eyebrow">Free check</p>
       <h1 className="font-display mt-2 text-[2.2rem] leading-tight sm:text-[2.8rem]">{place.name}</h1>
       <p className="mt-1 text-ink-3">{place.address}</p>
+      {place.id !== "new" && (await isAdmin()) ? (
+        <a href={`/admin/kit?place=${encodeURIComponent(place.id)}&industry=${industry}`} className="mt-2 inline-block rounded-full bg-warn-bg px-3 py-1 text-[0.85rem] font-semibold text-warn">
+          Admin: preview this business&apos;s Launch Kit →
+        </a>
+      ) : null}
 
       {allowed ? (
         <>
