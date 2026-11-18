@@ -282,7 +282,7 @@ const isHeading = (s: string) => /^(if|for|what|how|why|where|when|here|look|che
  * ("**Bluefern Spa & Salon**") or at the start of a list item ("1. Bluefern Spa & Salon - ...").
  * Best effort, no AI call: it's what we show as "picked instead".
  */
-export function picksIn(answer: string, exclude: string[] = []): string[] {
+export function picksIn(answer: string, exclude: string[] = [], limit = 5): string[] {
   const raw: string[] = [];
   for (const m of answer.matchAll(/\*\*([^*\n]{3,80})\*\*/g)) raw.push(m[1]);
   if (!raw.length) for (const m of answer.matchAll(/^\s*(?:\d+[.)]|[-•*])\s+([^\n:–—]{3,60}?)(?:\s[-–—]\s|:|\n|$)/gm)) raw.push(m[1]);
@@ -299,7 +299,7 @@ export function picksIn(answer: string, exclude: string[] = []): string[] {
     if (out.some((o) => sameBrand(o, r))) continue;
     out.push(r);
   }
-  return out.slice(0, 5);
+  return out.slice(0, limit);
 }
 
 export function excerptAround(answer: string, name: string, len = 220) {

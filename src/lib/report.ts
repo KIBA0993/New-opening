@@ -486,7 +486,7 @@ export async function freshCheck(place: Place, industrySlug: IndustrySlug) {
  */
 export function placementIn(text: string, placeName: string, mentionsYou = mentions(text, placeName)): { placement: Placement; rank?: number } {
   if (!mentionsYou) return { placement: "none" };
-  const all = picksIn(text);
+  const all = picksIn(text, [], 20); // the full list: you may be the 7th pick
   const i = all.findIndex((p) => sameBrand(p, placeName));
   if (i === 0) return { placement: "first", rank: 1 };
   if (i > 0) return { placement: "listed", rank: i + 1 };
