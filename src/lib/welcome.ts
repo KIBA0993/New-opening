@@ -5,6 +5,7 @@ import { composeDigest, packSnapshot } from "./digest";
 import { env } from "./env";
 import { alertOwner, errText } from "./alert";
 import { renderDigestHtml, sendEmail } from "./email";
+import { archiveEmail } from "./emailArchive";
 import { applyKitPost, kitBlock, ownerLinks } from "./kitDigest";
 
 // The first Autopilot email goes out right after purchase. The thank-you page triggers it,
@@ -37,8 +38,10 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
       account: sid ? `${env.siteUrl}/autopilot/account?session_id=${sid}` : undefined,
       trial: trialNotice(sub, sid),
     });
-    const res = await sendEmail(to, `${digest.business}: your first 5-minute week`, html);
+    const subject = `${digest.business}: your first 5-minute week`;
+    const res = await sendEmail(to, subject, html);
     if (!res.ok) throw new Error("email not accepted");
+    await archiveEmail(subId, subject, html);
     await stripe().subscriptions.update(subId, { metadata: { snap: packSnapshot(next), w1: `sent:${Date.now()}` } });
     return "sent";
   } catch (e) {

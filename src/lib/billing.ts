@@ -191,6 +191,7 @@ export interface Purchase {
   industry: string;
   created: number;
   active?: boolean; // Autopilot only
+  subscription?: Stripe.Subscription; // the Autopilot, or a Kit's free Autopilot week
 }
 
 /** Everything bought with this email, newest first. Used by the signed-in account page. */
@@ -213,6 +214,7 @@ export async function purchasesFor(email: string): Promise<Purchase[]> {
         industry: m.industry || "",
         created: s.created,
         active: sub ? ["active", "trialing", "past_due"].includes(sub.status) : undefined,
+        subscription: sub || undefined,
       });
     }
   }

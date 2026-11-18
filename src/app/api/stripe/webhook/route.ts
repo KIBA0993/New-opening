@@ -15,6 +15,7 @@ export const maxDuration = 300;
 //   invoice.payment_failed                an Autopilot renewal was declined
 //   customer.subscription.updated         a subscription fell to past_due or unpaid
 //   charge.dispute.created                a customer disputed a charge
+//   charge.refunded                       a refund: ends a Kit buyer's free Autopilot week so it never bills
 // Every send is guarded by Stripe metadata, so this, the thank-you pages and the hourly
 // check never send twice.
 const money = (cents?: number | null, cur?: string | null) => (cents == null ? "" : `${(cents / 100).toFixed(2)} ${(cur || "usd").toUpperCase()}`);
@@ -69,6 +70,19 @@ export async function POST(req: Request) {
         }
         break;
       }
+      case "charge.refunded": {
+        const c = event.data.object;
+        const customer = typeof c.customer === "string" ? c.customer : c.customer?.id;
+        const ended = c.refunded && customer ? await endRefundedKitTrials(customer, c.amount) : [];
+        await alertOwner(`refund-${c.id}`, ended.length ? "A Kit was refunded: its free Autopilot week was cancelled" : "A payment was refunded", {
+          customer: c.billing_details?.email || c.receipt_email,
+          amount: money(c.amount_refunded, c.currency),
+          "full refund": c.refunded ? "yes" : "no (partial)",
+          "Autopilot cancelled": ended.join(", ") || "none",
+          hint: ended.length ? "" : "If this was an Autopilot payment and they want out, cancel the subscription in Stripe too.",
+        });
+        break;
+      }
       case "charge.dispute.created": {
         const d = event.data.object;
         await alertOwner("dispute", "A customer disputed a charge", { amount: money(d.amount, d.currency), reason: d.reason, charge: typeof d.charge === "string" ? d.charge : d.charge?.id });
@@ -80,4 +94,21 @@ export async function POST(req: Request) {
     return new NextResponse("Handler error", { status: 500 }); // Stripe retries
   }
   return NextResponse.json({ received: true });
+}
+
+/**
+ * A Kit bought with the free Autopilot week is one subscription: refunding the Kit payment
+ * doesn't stop it, so it would bill the monthly price when the week ends. This cancels the
+ * customer's trialing Kit subscriptions whose first invoice is the refunded amount.
+ */
+async function endRefundedKitTrials(customer: string, amount: number): Promise<string[]> {
+  const ended: string[] = [];
+  for await (const sub of stripe().subscriptions.list({ customer, status: "trialing", limit: 20, expand: ["data.latest_invoice"] })) {
+    if (sub.metadata?.product !== "kit") continue;
+    const inv = sub.latest_invoice && typeof sub.latest_invoice !== "string" ? sub.latest_invoice : null;
+    if (!inv || inv.amount_paid !== amount) continue;
+    await stripe().subscriptions.cancel(sub.id);
+    ended.push(sub.id);
+  }
+  return ended;
 }

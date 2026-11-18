@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
+import { alertOwner, errText } from "./alert";
 import { has } from "./env";
 import { buildPrompts, industryBySlug, searchTerm } from "./industries";
 import { seeded } from "./mock";
@@ -36,7 +37,15 @@ export function checkContext(place: Place, industrySlug: IndustrySlug) {
 /** Nearby rivals, fetched once per request (both report sections need them). */
 export const getRivals = cache(async (place: Place, industrySlug: IndustrySlug) => {
   const { term, area } = checkContext(place, industrySlug);
-  const found = await findRivals(place, industrySlug, `${term} near ${area}`);
+  let found: Awaited<ReturnType<typeof findRivals>>;
+  try {
+    found = await findRivals(place, industrySlug, `${term} near ${area}`);
+  } catch (e) {
+    // Without rivals the check still works (it just has no one to compare against). Failing here
+    // used to take down every section of the report. Not cached, so the next load tries again.
+    await alertOwner("rivals", "The free check couldn't load nearby rivals", { business: place.name, place: place.id, industry: industrySlug, error: errText(e) });
+    found = { rivals: [], demo: false };
+  }
   // The owner's other locations aren't rivals; a mention of their brand already counts as a win.
   return { ...found, rivals: found.rivals.filter((r) => r.id !== place.id && !sameBrand(r.name, place.name)) };
 });
