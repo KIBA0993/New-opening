@@ -69,7 +69,7 @@ export function trialEndLabel(fromMs = Date.now()) {
  * monthly until cancelled (one Stripe checkout: the kit is charged today, the Autopilot starts as a trial).
  * "kit_only" is the Launch Kit alone.
  */
-export async function createCheckout(product: Product | "kit_only", profile: OwnerProfile): Promise<string> {
+export async function createCheckout(product: Product | "kit_only", profile: OwnerProfile, extra: Record<string, string> = {}): Promise<string> {
   const back = `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`;
   const isKit = product === "kit" || product === "kit_only";
   const bundle = product === "kit" && KIT_TRIAL_DAYS > 0;
@@ -84,6 +84,7 @@ export async function createCheckout(product: Product | "kit_only", profile: Own
     product: isKit ? "kit" : product,
     ...(isKit ? { price: String(kitAmount) } : {}),
     ...(bundle ? { bundle: "1" } : {}),
+    ...extra,
   };
   const kitItem: Stripe.Checkout.SessionCreateParams.LineItem = {
     quantity: 1,

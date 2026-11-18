@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { sendKitEmail } from "@/lib/fulfill";
 import { sendFirstEmail } from "@/lib/welcome";
 import { recordEvent } from "@/lib/stats";
+import { nameSource, type Channel } from "@/lib/sources";
 
 export const maxDuration = 300;
 
@@ -39,8 +40,12 @@ export async function POST(req: Request) {
         const s = event.data.object;
         const subId = typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
         // Reply to Stripe right away; writing the email takes longer than Stripe waits.
-        if (s.payment_status === "paid" && s.mode === "subscription" && s.metadata?.product !== "kit") await recordEvent("autopilot_paid");
-        if (s.payment_status === "paid" && s.metadata?.product === "kit") await recordEvent("kit_paid");
+        // Test-mode payments and the owner's own test buys don't count as sales by source.
+        const counted = s.livemode && s.metadata?.src !== "owner";
+        const [srcName, srcChannel] = (s.metadata?.src || "").split("|");
+        const source = srcName && srcChannel ? { name: srcName, channel: srcChannel as Channel } : nameSource(null);
+        if (counted && s.payment_status === "paid" && s.mode === "subscription" && s.metadata?.product !== "kit") await recordEvent("autopilot_paid", source);
+        if (counted && s.payment_status === "paid" && s.metadata?.product === "kit") await recordEvent("kit_paid", source);
         if (s.mode === "subscription" && subId) after(() => sendFirstEmail(subId, s.id).then(() => undefined));
         // A Kit can be a one-time payment, or (with the free Autopilot week) a subscription checkout.
         if (s.metadata?.product === "kit" && s.payment_status === "paid") after(() => sendKitEmail(s.id).then(() => undefined));

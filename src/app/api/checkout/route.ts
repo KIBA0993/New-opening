@@ -3,6 +3,8 @@ import { track } from "@vercel/analytics/server";
 import { z } from "zod";
 import { alertOwner, errText } from "@/lib/alert";
 import { allowIp } from "@/lib/guard";
+import { notCounted, visitorSource } from "@/lib/attribution";
+import { sourceKey } from "@/lib/sources";
 import { recordEvent } from "@/lib/stats";
 import { createCheckout } from "@/lib/billing";
 
@@ -30,8 +32,10 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Some details are missing. Please go back and check them." }, { status: 400 });
   try {
-    const url = await createCheckout(parsed.data.product, parsed.data.profile);
-    await recordEvent("checkout");
+    // Where the buyer first came from rides along in Stripe, so the payment can be credited to it.
+    const [source, owner] = [await visitorSource(), await notCounted()];
+    const url = await createCheckout(parsed.data.product, parsed.data.profile, { src: owner ? "owner" : sourceKey(source) });
+    if (!owner) await recordEvent("checkout", source);
     await track("checkout", { product: parsed.data.product, industry: parsed.data.profile.industry }).catch(() => undefined);
     return NextResponse.json({ url });
   } catch (e) {
