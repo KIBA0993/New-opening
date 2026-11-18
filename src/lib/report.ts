@@ -287,3 +287,47 @@ export function nextFix(sig: Signal[], listings: ListingCheck[]) {
   if (missing) return `Get listed on ${PLATFORM_LABEL[missing.platform]}`;
   return "Claim your ChatGPT business profile";
 }
+
+export interface Fix {
+  title: string;
+  why: string;
+}
+
+/**
+ * Everything the check found that the Launch Kit fixes, most important first.
+ * Built only from this report's own results (listings, AI answers, Google signals).
+ */
+export function findFixes(place: Place, report: { answers: EngineAnswer[]; listings: ListingCheck[]; rivals: Rival[] }, sig: Signal[]): Fix[] {
+  const fixes: Fix[] = [];
+  const google = report.listings.find((l) => l.platform === "google");
+  if (place.id === "new" || google?.state === "missing") {
+    fixes.push({ title: "Create and verify your Google profile", why: "Not on Google Maps yet. AI assistants and Maps can't recommend you until you are." });
+  }
+  const skipped = report.answers.filter((a) => !a.mentionsYou);
+  if (skipped.length) {
+    const top = [...report.rivals].sort((a, b) => b.aiMentions - a.aiMentions)[0];
+    fixes.push({
+      title: `Get named by AI assistants (skipped in ${skipped.length} of ${report.answers.length} answers)`,
+      why: top?.aiMentions ? `${top.name} was named instead. Your profile needs the categories, services and wording AI looks for.` : "Your profile needs the categories, services and wording AI looks for.",
+    });
+  }
+  const gaps = citationGaps(report.listings, report.rivals);
+  // Missing listings that the most rivals have come first.
+  const rank = (l: ListingCheck) => gaps.find((g) => g.platform === l.platform)?.rivalsListed || 0;
+  for (const l of [...report.listings].sort((x, y) => rank(y) - rank(x))) {
+    if (l.platform === "google" || l.platform === "chatgpt") continue;
+    const gap = gaps.find((g) => g.platform === l.platform);
+    if (l.state === "missing") {
+      fixes.push({ title: `Get listed on ${PLATFORM_LABEL[l.platform]}`, why: gap ? `${gap.rivalsListed} of ${gap.rivalsTotal} nearby rivals are there. You're not.` : l.note });
+    } else if (l.state === "different") {
+      fixes.push({ title: `Fix the wrong details on ${PLATFORM_LABEL[l.platform]}`, why: l.note });
+    }
+  }
+  for (const s of sig) {
+    if (s.light === "red") fixes.push({ title: `Fix: ${s.label.toLowerCase()}`, why: s.note });
+  }
+  if (report.listings.some((l) => l.platform === "chatgpt" && l.state !== "found")) {
+    fixes.push({ title: "Claim your ChatGPT business profile", why: "New in 2026. It controls what ChatGPT shows about you." });
+  }
+  return fixes;
+}

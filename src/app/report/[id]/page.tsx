@@ -16,7 +16,9 @@ import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { MapGrid } from "@/components/MapGrid";
-import { aiReport, aiSummary, checkContext, citationGaps, getRivals, nextFix, PLATFORM_LABEL, signals, visibility } from "@/lib/report";
+import { aiReport, aiSummary, checkContext, citationGaps, findFixes, getRivals, PLATFORM_LABEL, signals, visibility } from "@/lib/report";
+import { cache } from "react";
+import { EmailReport, ShowFew, StickyKitBar } from "./ReportClient";
 import type { IndustrySlug, ListingState, Place, Platform } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Your free check", robots: { index: false } };
@@ -74,6 +76,8 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
         <>
           <Suspense fallback={<AISkeleton engines={engineNames()} />}>
             <VisibilityHero place={place} industry={industry} />
+            <TopFixes place={place} industry={industry} />
+            <AISection place={place} industry={industry} />
           </Suspense>
           <Suspense fallback={<SignalsSkeleton />}>
             <SignalsSection place={place} industry={industry} />
@@ -81,12 +85,12 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
           {place.id !== "new" ? (
             <Suspense fallback={<div className="skeleton mt-12 h-72" />}>
               <MapGrid place={place} keyword={checkContext(place, industry).term} />
+              <KitLine>The Launch Kit sets up what moves you up on Maps</KitLine>
             </Suspense>
           ) : null}
-          <Suspense fallback={<div className="skeleton mt-12 h-96" />}>
-            <AISection place={place} industry={industry} />
+          <Suspense fallback={null}>
+            <Unlock place={place} industry={industry} sharePath={path} />
           </Suspense>
-          <Unlock place={place} industry={industry} sharePath={path} />
         </>
       ) : (
         <div className="card mt-8 p-6">
@@ -160,9 +164,8 @@ async function SignalsSection({ place, industry }: { place: Place; industry: Ind
   const { rivals, demo } = await getRivals(place, industry);
   const { items, score } = signals(place, rivals);
   const overall: Light = score >= 80 ? "green" : score >= 55 ? "yellow" : "red";
-  const fix = nextFix(items, []);
   return (
-    <section aria-labelledby="score" className="card mt-8 p-5 sm:p-7">
+    <section aria-labelledby="score" className="card mt-12 p-5 sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
         <Pill light={overall}>{overall === "green" ? "Looking good" : overall === "yellow" ? "Some gaps" : "Customers can't find you yet"}</Pill>
         <DemoTag show={demo} />
@@ -182,7 +185,7 @@ async function SignalsSection({ place, industry }: { place: Place; industry: Ind
           </div>
         ))}
       </dl>
-      <a href="#unlock" className="btn btn-accent mt-6 w-full sm:w-auto">{fix}</a>
+      <KitLine>The Launch Kit fixes every item marked Fix or Improve</KitLine>
     </section>
   );
 }
@@ -229,18 +232,20 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
             </div>
           ))}
         </div>
+        <KitLine>The Launch Kit writes the profile details AI assistants look for</KitLine>
       </section>
 
       <section aria-labelledby="rivals" className="mt-12">
         <h2 id="rivals" className="font-display text-[1.7rem]">You vs. nearby rivals</h2>
         <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {ind.term}s within a few miles. A listing marked &ldquo;?&rdquo; means we couldn&apos;t check it.</p>
-        <ul className="mt-5 space-y-3">
+        <ShowFew few={3} label={`See all ${report.rivals.length} rivals`}>
           <RivalRow name={`${place.name} (you)`} you rating={place.rating} reviews={place.reviewCount || 0} ai={s.named} total={s.total}
             profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "unknown" ? null : l.state === "found" || l.state === "different"]))} />
           {report.rivals.map((r) => (
             <RivalRow key={r.id} name={r.name} rating={r.rating} reviews={r.reviewCount || 0} ai={r.aiMentions} total={s.total} miles={r.distanceMiles} profiles={r.profiles || {}} />
           ))}
-        </ul>
+        </ShowFew>
+        <KitLine>Catch up to them with the Launch Kit</KitLine>
       </section>
 
       {gaps.length ? (
@@ -270,7 +275,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
               );
             })}
           </ul>
-          <p className="mt-3 text-[0.9rem] text-ink-3">The Launch Kit fills in every field for you, ready to paste.</p>
+          <KitLine>The Launch Kit fills in every field for you, ready to paste</KitLine>
         </section>
       ) : null}
 
@@ -288,37 +293,145 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
             </li>
           ))}
         </ul>
+        <KitLine>The Launch Kit gets you listed with the same details everywhere</KitLine>
       </section>
     </>
   );
 }
 
+/** Shared per request: the fixes the check found, and whether the business is already in good shape. */
+const standing = cache(async (place: Place, industry: IndustrySlug) => {
+  const [report, { rivals }] = await Promise.all([aiReport(place, industry), getRivals(place, industry)]);
+  const sig = signals(place, rivals);
+  const fixes = findFixes(place, report, sig.items);
+  const { pct } = visibility(report.answers);
+  // In good shape: AI names them most of the time and Google basics are solid. Then the Autopilot leads.
+  const strong = pct >= 50 && sig.score >= 80 && fixes.length <= 2;
+  return { fixes, strong };
+});
+
+const REFUND = "14-day money-back promise.";
+
+/** One line at the end of each section, pointing back to the offer. */
+function KitLine({ children }: { children: React.ReactNode }) {
+  return (
+    <a href="#unlock" className="mt-4 inline-block font-semibold text-accent underline-offset-4 hover:underline">
+      {children} →
+    </a>
+  );
+}
+
+/** Right under the score: the 3 biggest fixes from this check, and the button to fix them. */
+async function TopFixes({ place, industry }: { place: Place; industry: IndustrySlug }) {
+  const [{ fixes, strong }, kit] = await Promise.all([standing(place, industry), kitPrice()]);
+  const top = fixes.slice(0, 3);
+  return (
+    <>
+      <section id="fixes" aria-labelledby="fixes-h" className="card mt-6 scroll-mt-6 p-5 sm:p-7">
+        <p className="eyebrow">{fixes.length ? `${fixes.length} ${fixes.length === 1 ? "fix" : "fixes"} found` : "No big gaps"}</p>
+        <h2 id="fixes-h" className="font-display mt-2 text-[1.6rem] leading-snug sm:text-[1.9rem]">
+          {top.length ? `Your top ${top.length === 1 ? "fix" : `${top.length} fixes`}` : "You're in good shape"}
+        </h2>
+        {top.length ? (
+          <ol className="mt-4 space-y-4">
+            {top.map((f, i) => (
+              <li key={f.title} className="flex gap-3">
+                <span className="font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-paper">{i + 1}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold">{f.title}</p>
+                  <p className="text-[0.95rem] text-ink-3">{f.why}</p>
+                  <p className="mt-1 text-[0.88rem] font-semibold text-good">✓ Fixed in your Launch Kit</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-2 text-ink-2">AI assistants already name you and your listings line up. The Weekly Autopilot keeps it that way as rivals catch up.</p>
+        )}
+        {strong ? (
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
+              Stay on top · {PRICES.monthly.label}/mo
+            </BuyButton>
+            {top.length ? <BuyButton product="kit" placeId={place.id} industry={industry} className="link text-left">Or fix these once for {kit.label}</BuyButton> : null}
+          </div>
+        ) : (
+          <div className="mt-6">
+            <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
+              Fix {top.length > 1 ? "these" : "this"} for {kit.label}
+            </BuyButton>
+          </div>
+        )}
+        <p className="mt-3 text-[0.9rem] text-ink-3">
+          {fixes.length > top.length ? `Your kit covers all ${fixes.length} fixes. ` : ""}One-time payment. {REFUND}
+        </p>
+      </section>
+      {fixes.length && !strong ? <StickyKitBar label={`${fixes.length} ${fixes.length === 1 ? "fix" : "fixes"} found · Launch Kit ${kit.label}`} /> : null}
+    </>
+  );
+}
+
 async function Unlock({ place, industry, sharePath }: { place: Place; industry: IndustrySlug; sharePath: string }) {
-  const kit = await kitPrice();
+  const [kit, { strong }] = await Promise.all([kitPrice(), standing(place, industry)]);
+  const kitBtn = (
+    <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
+      Get my Launch Kit · {kit.label}
+    </BuyButton>
+  );
+  const autoBtn = (
+    <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px] sm:w-auto">
+      Start the Weekly Autopilot · {PRICES.monthly.label}/mo
+    </BuyButton>
+  );
   return (
     <>
       <section id="unlock" aria-labelledby="unlock-h" className="mt-12 scroll-mt-6 rounded-3xl bg-ink p-6 text-paper sm:p-9">
-        <p className="eyebrow !text-[#f0a37f]">The Launch Kit</p>
-        <h2 id="unlock-h" className="font-display mt-2 text-[1.9rem] leading-tight sm:text-[2.3rem]">Fix all of this in one afternoon.</h2>
-        <ul className="mt-4 space-y-2 text-[#e3dccf]">
-          <li>Your Google profile, written: categories, description, services, keywords, Q&A and 4 posts</li>
-          <li>{place.id === "new" ? "Step-by-step help creating and verifying your Google profile" : "Verification and claiming coach"}</li>
-          <li>Guided setup on Apple Maps, Bing, Yelp, Facebook and ChatGPT</li>
-          <li>Your review link, a QR card to print, and ready-to-send review requests</li>
-        </ul>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <BuyButton product="kit" placeId={place.id} industry={industry} className="btn btn-accent w-full !min-h-[56px]">
-            Get my Launch Kit · {kit.label}
-          </BuyButton>
-          <BuyButton product="monthly" placeId={place.id} industry={industry} className="btn w-full border border-[#6b6459] !min-h-[56px] text-paper hover:bg-[#2c2924]">
-            Weekly Autopilot · {PRICES.monthly.label}/mo
-          </BuyButton>
-        </div>
-        <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment for the kit. 14-day money-back promise. Secure checkout by Stripe.</p>
+        {strong ? (
+          <>
+            <p className="eyebrow !text-[#f0a37f]">The Weekly Autopilot</p>
+            <h2 id="unlock-h" className="font-display mt-2 text-[1.9rem] leading-tight sm:text-[2.3rem]">You&apos;re ahead. Stay there.</h2>
+            <ul className="mt-4 space-y-2 text-[#e3dccf]">
+              <li>Every Monday: what AI assistants say about you and your rivals</li>
+              <li>Rival moves, and what to do about them</li>
+              <li>A Google post and review replies, written for you</li>
+              <li>Local events to join, with the pitch written</li>
+            </ul>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+              {autoBtn}
+              <BuyButton product="kit" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
+                Or get the one-time Launch Kit · {kit.label}
+              </BuyButton>
+            </div>
+            <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">Cancel any time. {REFUND} Secure checkout by Stripe.</p>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow !text-[#f0a37f]">The Launch Kit</p>
+            <h2 id="unlock-h" className="font-display mt-2 text-[1.9rem] leading-tight sm:text-[2.3rem]">Fix all of this in one afternoon.</h2>
+            <ul className="mt-4 space-y-2 text-[#e3dccf]">
+              <li>Your Google profile, written: categories, description, services, keywords, Q&A and 4 posts</li>
+              <li>{place.id === "new" ? "Step-by-step help creating and verifying your Google profile" : "Verification and claiming coach"}</li>
+              <li>Guided setup on Apple Maps, Bing, Yelp, Facebook and ChatGPT</li>
+              <li>Your review link, a QR card to print, and ready-to-send review requests</li>
+            </ul>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+              {kitBtn}
+              <BuyButton product="monthly" placeId={place.id} industry={industry} className="text-left text-[#e3dccf] underline underline-offset-4">
+                Or keep watch weekly · {PRICES.monthly.label}/mo
+              </BuyButton>
+            </div>
+            <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment. {REFUND} Secure checkout by Stripe.</p>
+          </>
+        )}
       </section>
-      <section className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-ink-2">Share this check with a partner or friend.</p>
-        <CopyButton text={env.siteUrl + sharePath} label="Copy link to this check" />
+      <section aria-labelledby="keep" className="card mt-10 p-5 sm:p-6">
+        <h2 id="keep" className="font-semibold">Keep this report</h2>
+        <p className="mt-1 text-[0.95rem] text-ink-3">We&apos;ll email you the link. No account needed.</p>
+        <div className="mt-3"><EmailReport name={place.name} reportPath={sharePath} /></div>
+        <div className="mt-4 flex flex-col items-start gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-ink-2">Or share it with a partner or friend.</p>
+          <CopyButton text={env.siteUrl + sharePath} label="Copy link to this check" />
+        </div>
       </section>
       <p className="mt-6 text-[0.85rem] text-ink-3">AI answers change from day to day, so a single check is a snapshot. We refresh them daily.</p>
     </>
@@ -329,7 +442,7 @@ const PLATS: Platform[] = ["google", "apple", "bing", "yelp", "facebook"];
 
 function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean | null>> }) {
   return (
-    <li className={`card p-4 ${you ? "border-ink outline outline-1 outline-ink" : ""}`}>
+    <div className={`card p-4 ${you ? "border-ink outline outline-1 outline-ink" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-semibold">{name}</p>
         {miles != null ? <p className="text-[0.85rem] text-ink-3">{miles} mi away</p> : null}
@@ -348,6 +461,6 @@ function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { 
           </span>
         ))}
       </p>
-    </li>
+    </div>
   );
 }
