@@ -102,6 +102,7 @@ export async function verifyTurnstile(token: string | undefined | null): Promise
 const HUMAN_COOKIE = "od_h";
 
 export async function markHuman() {
+  if (!turnstileOn()) return; // nothing to remember when the bot check is off
   (await cookies()).set(HUMAN_COOKIE, seal({ k: "human", exp: Date.now() + 864e5 }), {
     httpOnly: true,
     secure: env.siteUrl.startsWith("https"),
