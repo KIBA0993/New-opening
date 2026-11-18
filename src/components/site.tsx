@@ -4,7 +4,7 @@ import { INDUSTRIES } from "@/lib/industries";
 export function Wordmark() {
   return (
     <span className="font-display text-[1.35rem] font-semibold tracking-tight">
-      Opening Day<span className="text-accent">.</span>
+      MapDebut<span className="text-accent">.</span>
     </span>
   );
 }
@@ -13,7 +13,7 @@ export function SiteHeader() {
   return (
     <header className="border-b border-line">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" aria-label="Opening Day home" className="py-2">
+        <Link href="/" aria-label="MapDebut home" className="py-2">
           <Wordmark />
         </Link>
         <nav aria-label="Main" className="flex items-center gap-1 sm:gap-5 text-[0.95rem]">
@@ -47,7 +47,7 @@ export function SiteFooter() {
           </ul>
         </div>
         <div>
-          <p className="font-semibold">Opening Day</p>
+          <p className="font-semibold">MapDebut</p>
           <ul className="mt-2 space-y-1.5">
             <li><Link className="text-ink-2 hover:text-ink" href="/start">Free check</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/autopilot">Weekly autopilot</Link></li>

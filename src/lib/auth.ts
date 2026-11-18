@@ -15,7 +15,7 @@ function secret() {
   if (env.authSecret) return env.authSecret;
   // Without a secret, sign-in only works in sample mode (no real customer data to protect).
   if (has.stripe()) throw new Error("AUTH_SECRET is not set");
-  return "opening-day-sample-mode-only";
+  return "mapdebut-sample-mode-only";
 }
 
 const b64 = (s: string | Buffer) => Buffer.from(s).toString("base64url");

@@ -28,9 +28,9 @@ export async function POST(req: Request) {
   }
   await sendEmail(
     parsed.data.email,
-    "Your Opening Day sign-in link",
+    "Your MapDebut sign-in link",
     `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif">Tap to sign in. The link works for 15 minutes.</p>
-<p><a href="${link}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none;font:600 16px -apple-system,Segoe UI,Helvetica,Arial,sans-serif">Sign in to Opening Day</a></p>
+<p><a href="${link}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none;font:600 16px -apple-system,Segoe UI,Helvetica,Arial,sans-serif">Sign in to MapDebut</a></p>
 <p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459">If you didn't ask for this, you can ignore it.</p>`,
   );
   // Sample mode only (no email service and no payments): show the link so the flow can be tried.

@@ -9,10 +9,10 @@ const body = Instrument_Sans({ variable: "--font-body", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: { default: "Opening Day: get your new business found on Google, Maps and ChatGPT", template: "%s · Opening Day" },
+  title: { default: "MapDebut: get your new business found on Google, Maps and ChatGPT", template: "%s · MapDebut" },
   description:
     "Free check: see if Google, Maps and ChatGPT recommend your new local business, and who they pick instead. Then set up every profile in one afternoon.",
-  openGraph: { type: "website", siteName: "Opening Day" },
+  openGraph: { type: "website", siteName: "MapDebut" },
   twitter: { card: "summary_large_image" },
 };
 

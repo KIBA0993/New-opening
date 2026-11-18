@@ -59,7 +59,7 @@ export async function createCheckout(product: Product, profile: OwnerProfile): P
         price_data: {
           currency: "usd",
           unit_amount: (product === "kit" ? kitAmount : PRICES[product].amount) * 100,
-          product_data: { name: product === "kit" ? "Opening Day Launch Kit" : "Opening Day Weekly Autopilot" },
+          product_data: { name: product === "kit" ? "MapDebut Launch Kit" : "MapDebut Weekly Autopilot" },
           ...(product === "kit" ? {} : { recurring: { interval: product === "monthly" ? "month" : "year" } }),
         },
       };
