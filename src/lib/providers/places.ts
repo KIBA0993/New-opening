@@ -1,4 +1,5 @@
 import "server-only";
+import { cleanUrl } from "../url";
 import { unstable_cache } from "next/cache";
 import { nearBias, type LatLng } from "../geo";
 import { env, has } from "../env";
@@ -65,7 +66,7 @@ function toPlace(p: GPlace): Place {
     address: p.formattedAddress || "",
     city: cityFrom(p),
     phone: p.nationalPhoneNumber,
-    website: p.websiteUri,
+    website: cleanUrl(p.websiteUri),
     rating: p.rating,
     reviewCount: p.userRatingCount ?? 0,
     primaryType: p.primaryType,

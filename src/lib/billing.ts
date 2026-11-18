@@ -2,6 +2,7 @@ import "server-only";
 import Stripe from "stripe";
 import { env, has, PRICES } from "./env";
 import { kitPrice } from "./pricing";
+import { cleanUrl } from "./url";
 import { dealOn, KIT_TRIAL_DAYS } from "./deal";
 import type { IndustrySlug, OwnerProfile } from "./types";
 
@@ -27,7 +28,7 @@ export function metadataToProfile(m: Record<string, string> | null | undefined):
     address: m.address || "",
     city: m.city || "",
     phone: m.phone || undefined,
-    website: m.website || undefined,
+    website: cleanUrl(m.website || undefined),
     industry: m.industry as IndustrySlug,
     managesProfile: (m.managesProfile as OwnerProfile["managesProfile"]) || "unsure",
     services: m.services || "",

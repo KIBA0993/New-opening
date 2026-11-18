@@ -234,6 +234,8 @@ export const industryBySlug = (slug?: string | null): Industry | undefined =>
 /** Guess the industry from Google place types. */
 export function guessIndustry(types: string[] = [], primaryType?: string, name?: string): IndustrySlug | undefined {
   // Order matters: more specific first. Google's types win; the business name is a fallback.
+  // Med spas are medical (Botox, fillers, weight loss), even when Google files them under "Spa" or "Beauty".
+  if (/\bmed(ical)?[\s_-]?spa\b/i.test(name || "") || types.some((t) => t === "medical_spa" || t === "skin_care_clinic") || primaryType === "medical_spa") return "wellness";
   const order: IndustrySlug[] = ["food-trucks", "pet", "beauty", "home-services", "wellness", "restaurants"];
   for (const hay of [[primaryType || "", ...types].join(" "), (name || "").replace(/\s+/g, "_")]) {
     const h = hay.toLowerCase();
