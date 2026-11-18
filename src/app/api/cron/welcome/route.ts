@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   const since = now - 3 * 86400;
   const out = { autopilot: 0, kit: 0, failed: 0 };
 
-  for await (const sub of stripe().subscriptions.list({ status: "active", created: { gte: since }, limit: 100 })) {
+  for await (const sub of stripe().subscriptions.list({ status: "all", created: { gte: since }, limit: 100 })) {
+    if (sub.status !== "active" && sub.status !== "trialing") continue;
     if (sub.metadata.snap || (sub.metadata.w1 || "").startsWith("sent")) continue;
     if (now - sub.created < GRACE_SEC) continue;
     const r = await sendFirstEmail(sub.id);

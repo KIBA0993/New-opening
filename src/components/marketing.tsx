@@ -2,6 +2,9 @@ import { CONTACT_EMAIL, REFUND_DAYS } from "@/lib/site";
 import Link from "next/link";
 import { PRICES } from "@/lib/env";
 import { kitPrice, launchNote } from "@/lib/pricing";
+import { DEAL, dealEndLabel, dealOn, KIT_TRIAL_DAYS } from "@/lib/deal";
+import { BuyButton } from "./BuyButton";
+import { KitTrialNote } from "./KitTrialNote";
 import type { Industry } from "@/lib/industries";
 import { Check, Pill, Section } from "./ui";
 
@@ -122,6 +125,7 @@ export function KitContents({ extras = [] }: { extras?: string[] }) {
 
 export async function Pricing({ cta = "/start" }: { cta?: string }) {
   const kit = await kitPrice();
+  const deal = dealOn();
   return (
     <Section id="pricing" eyebrow="Pricing" title="Pay once to launch. Stay found for less than a lunch a week." className="mt-24">
       <div className="mt-10 grid gap-5 lg:grid-cols-3">
@@ -140,23 +144,31 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
           <h3 className="font-display text-[1.4rem]">Launch Kit</h3>
           <p className="mt-1 text-[2.2rem] font-semibold">{kit.label} <span className="text-base font-normal text-ink-3">one time</span></p>
           {kit.leftAtPrice != null ? <p className="text-[0.9rem] font-semibold text-accent">{launchNote(kit)}</p> : null}
+          {deal ? <p className="text-[0.9rem] text-ink-3">${DEAL.kitAfter} after the launch deal ends {dealEndLabel()}.</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
-            {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep"].map((t) => (
+            {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep", ...(KIT_TRIAL_DAYS > 0 ? ["First week of the Weekly Autopilot, free"] : [])].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
             ))}
           </ul>
-          <Link href={cta} className="btn btn-primary mt-6 w-full">Start with the free check</Link>
+          <BuyButton product="kit" className="btn btn-primary mt-6 w-full">Get the Launch Kit · {kit.label}</BuyButton>
+          <KitTrialNote className="mt-3" />
+          <Link href={cta} className="link mt-3 inline-block text-[0.95rem]">Or run the free check first</Link>
         </div>
         <div className="card p-6">
           <h3 className="font-display text-[1.4rem]">Weekly Autopilot</h3>
           <p className="mt-1 text-[2.2rem] font-semibold">{PRICES.monthly.label} <span className="text-base font-normal text-ink-3">{PRICES.monthly.note}</span></p>
           <p className="text-[0.9rem] text-ink-3">or {PRICES.yearly.label} {PRICES.yearly.note}</p>
+          {deal && DEAL.monthlyAfter !== DEAL.monthlyNow ? <p className="text-[0.9rem] font-semibold text-accent">Lock in this price. New plans are ${DEAL.monthlyAfter}/mo after {dealEndLabel()}.</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
             {["Weekly AI recommendation check", "Rival moves and what to do about them", "A Google post and review replies, written", "Local events to join, with the pitch written"].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
             ))}
           </ul>
-          <Link href="/autopilot" className="btn btn-ghost mt-6 w-full">See a sample email</Link>
+          <div className="mt-6 grid gap-2">
+            <BuyButton product="monthly" className="btn btn-primary w-full">Start for {PRICES.monthly.label}/month</BuyButton>
+            <BuyButton product="yearly" className="btn btn-ghost w-full">{PRICES.yearly.label}/year{PRICES.yearly.save > 0 ? `, save $${PRICES.yearly.save}` : ""}</BuyButton>
+          </div>
+          <Link href="/autopilot" className="link mt-3 inline-block text-[0.95rem]">See a sample email</Link>
         </div>
       </div>
       <p className="mt-4 text-[0.9rem] text-ink-3">{REFUND_DAYS}-day money-back promise: not happy, email <a className="link" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> within {REFUND_DAYS} days of paying for a full refund. Cancel the autopilot any time, in two clicks.</p>

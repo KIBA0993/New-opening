@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { loadProfile } from "@/lib/clientProfile";
 import type { OwnerProfile } from "@/lib/types";
 
-type Product = "kit" | "monthly" | "yearly";
+type Product = "kit" | "kit_only" | "monthly" | "yearly";
 
 /** Starts checkout with the owner's answers. If we don't have them (shared link), asks for them first. */
 export function BuyButton({
@@ -33,7 +33,11 @@ export function BuyButton({
   const matches = profile && (!placeId || profile.placeId === placeId || (placeId === "new" && profile.placeId === "new"));
 
   if (ready && !matches) {
-    const href = placeId && placeId !== "new" ? `/start?place=${encodeURIComponent(placeId)}${industry ? `&industry=${industry}` : ""}` : "/start";
+    // No business on file yet: ask for it in one step, then go straight to checkout.
+    const qs = new URLSearchParams({ buy: product });
+    if (placeId && placeId !== "new") qs.set("place", placeId);
+    if (industry) qs.set("industry", industry);
+    const href = `/start?${qs}`;
     return (
       <Link href={href} className={className}>
         {children}
@@ -66,9 +70,9 @@ export function BuyButton({
         {busy ? "Opening secure checkout…" : children}
       </button>
       {error ? (
-        <p role="alert" className="mt-2 text-bad">
+        <span role="alert" className="mt-2 block text-bad">
           {error}
-        </p>
+        </span>
       ) : null}
     </>
   );

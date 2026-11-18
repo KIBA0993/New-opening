@@ -41,7 +41,7 @@ const p = (t: string) => `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvet
 const box = (t: string) =>
   `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:8px 0 12px;font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(t)}</div>`;
 
-export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string } = {}) {
+export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string; trial?: { renews: string; price: string; cancelUrl: string } } = {}) {
   const named = d.visibility.filter((v) => v.mentionsYou).length;
   const vis = d.visibility
     .map((v) => `${v.mentionsYou ? "🟢" : "🔴"} <b>${ENGINE_LABEL[v.engine]}</b> ${v.mentionsYou ? "named you" : "didn't name you"}`)
@@ -55,6 +55,7 @@ export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?
   return wrap(`
 <h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">${esc(d.business)}: your week of ${esc(d.weekOf)}</h1>
 ${p(`Five minutes, five things. Everything is written for you. Copy, paste, done.`)}
+${links.trial ? `<p style="font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 12px;background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:10px 14px">This is your free week of the Autopilot, included with your Launch Kit. It renews on <b>${esc(links.trial.renews)}</b> at <b>${esc(links.trial.price)}</b> until you cancel. <a href="${links.trial.cancelUrl}" style="color:#B4441A">Cancel in one click</a>.</p>` : ""}
 ${h2(`1. Are AI tools recommending you? ${named} of ${d.visibility.length}`)}
 ${p(vis)}
 ${links.account ? p(`Changed something? <a href="${links.account}" style="color:#B4441A">Run a fresh check now</a> with one of your monthly re-checks.`) : ""}
@@ -73,11 +74,18 @@ ${links.kit ? p(`<a href="${links.kit}" style="color:#B4441A">Open your Launch K
 `);
 }
 
-export function renderKitEmail(name: string, kitUrl: string) {
+export function renderKitEmail(name: string, kitUrl: string, trial?: { status: string; renews: string | null; price: string; cancelUrl: string } | null) {
+  const trialBlock =
+    trial && trial.status === "trialing"
+      ? `${h2("Your free week of the Weekly Autopilot")}
+${p(`Your first Autopilot email for ${esc(name)} is on its way in a separate email. Your free week ends on <b>${esc(trial.renews || "")}</b>. After that it renews at <b>${esc(trial.price)}</b>, billed to the card you used, until you cancel.`)}
+${p(`Don't want it? <a href="${trial.cancelUrl}" style="color:#B4441A">Cancel the Autopilot in one click</a> before ${esc(trial.renews || "then")} and you won't be charged again. Your Launch Kit stays yours either way.`)}`
+      : "";
   return wrap(`<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">Your Launch Kit for ${esc(name)} is ready</h1>
 ${p("Everything is written. Set aside one afternoon, go step by step, and tap copy next to each piece.")}
 ${p(`<a href="${kitUrl}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">Open my Launch Kit</a>`)}
-${p("Keep this email. The link is your key to the kit.")}`);
+${p("Keep this email. The link is your key to the kit.")}
+${trialBlock}`);
 }
 
 export function renderReportEmail(name: string, reportUrl: string, headline: string) {

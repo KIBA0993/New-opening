@@ -7,6 +7,7 @@ import type { OwnerProfile } from "./types";
 // Re-check credits for Autopilot subscribers. Placeholder numbers until we measure live AI cost.
 export const CREDITS = {
   monthly: Number(process.env.AUTOPILOT_CHECKS_PER_MONTH || 20),
+  trial: Number(process.env.AUTOPILOT_CHECKS_IN_TRIAL || 5),
   topupCount: Number(process.env.TOPUP_CHECKS || 20),
   topupPrice: Number(process.env.TOPUP_PRICE || 5),
 };
@@ -55,20 +56,23 @@ async function subIdFor(sessionId: string) {
 /** The subscriber's credit balance. Returns null when the session isn't an active Autopilot. */
 export async function getAccount(sessionId: string): Promise<Account | null> {
   const paid = await paidSession(sessionId);
-  if (!paid || paid.product === "kit") return null;
+  if (!paid) return null;
   let stored: Stored;
   let subId: string | null = null;
+  let allowance = CREDITS.monthly;
   const demo = sessionId.startsWith("demo_") || !has.stripe();
+  if (demo && paid.product === "kit") return null;
   if (demo) stored = await readDemo();
   else {
     subId = await subIdFor(sessionId);
     if (!subId) return null;
     const sub = await stripe().subscriptions.retrieve(subId);
     if (!["active", "trialing", "past_due"].includes(sub.status)) return null;
+    // A Kit buyer's free week gets a few re-checks; the full monthly allowance starts once it's paid.
+    if (sub.status === "trialing") allowance = Math.min(CREDITS.trial, CREDITS.monthly);
     stored = sub.metadata as Stored;
   }
   const { used, extra } = parse(stored);
-  const allowance = CREDITS.monthly;
   return { profile: paid.profile, subId, used, extra, allowance, left: Math.max(0, allowance - used) + extra, demo };
 }
 

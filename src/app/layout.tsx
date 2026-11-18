@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { PageBeat } from "@/components/PageBeat";
+import { DealBanner } from "@/components/DealBanner";
+import { afterDealText, DEAL, dealEndLabel, dealOn } from "@/lib/deal";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/site";
 
@@ -30,6 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 btn btn-primary">
           Skip to content
         </a>
+        {dealOn() ? <DealBanner endsAt={DEAL.endsAt} endLabel={dealEndLabel()} after={afterDealText()} /> : null}
         <SiteHeader />
         <main id="main" className="flex-1">
           {children}

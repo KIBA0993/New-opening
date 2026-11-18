@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { has } from "./env";
 import { stripe } from "./billing";
+import { DEAL, dealOn } from "./deal";
 
 // Launch price: the kit starts low and rises a step after every few sales, up to a cap.
 export const LAUNCH = {
@@ -23,20 +24,30 @@ async function countKitSales(): Promise<number> {
 
 const cachedSales = unstable_cache(countKitSales, ["kit-sales-v1"], { revalidate: 300, tags: ["kit-sales"] });
 
-export function priceForSales(sold: number) {
+export interface KitPrice {
+  amount: number;
+  label: string;
+  sold: number;
+  leftAtPrice: number | null;
+  next: number | null;
+}
+
+export function priceForSales(sold: number, now = Date.now()): KitPrice {
+  // After the launch deal ends, everyone pays the announced after-deal price.
+  if (!dealOn(now)) return { amount: DEAL.kitAfter, label: `$${DEAL.kitAfter}`, sold, leftAtPrice: null, next: null };
+  // During the deal the price never climbs past the after-deal price.
+  const cap = Math.min(LAUNCH.cap, DEAL.kitAfter);
   const tier = Math.floor(sold / LAUNCH.every);
-  const amount = Math.min(LAUNCH.cap, LAUNCH.start + tier * LAUNCH.step);
-  const capped = amount >= LAUNCH.cap;
+  const amount = Math.min(cap, LAUNCH.start + tier * LAUNCH.step);
+  const capped = amount >= cap;
   return {
     amount,
     label: `$${amount}`,
     sold,
     leftAtPrice: capped ? null : LAUNCH.every - (sold % LAUNCH.every),
-    next: capped ? null : Math.min(LAUNCH.cap, amount + LAUNCH.step),
+    next: capped ? null : Math.min(cap, amount + LAUNCH.step),
   };
 }
-
-export type KitPrice = ReturnType<typeof priceForSales>;
 
 /** Current kit price. Checkout charges this exact amount, read fresh at checkout time. */
 export async function kitPrice(fresh = false): Promise<KitPrice> {

@@ -40,7 +40,7 @@ export default async function AutopilotPage({ searchParams }: { searchParams: Pr
           </ul>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <BuyButton product="monthly">Start for {PRICES.monthly.label}/month</BuyButton>
-            <BuyButton product="yearly" className="btn btn-ghost w-full">{PRICES.yearly.label}/year, save $119</BuyButton>
+            <BuyButton product="yearly" className="btn btn-ghost w-full">{PRICES.yearly.label}/year{PRICES.yearly.save > 0 ? `, save $${PRICES.yearly.save}` : ""}</BuyButton>
           </div>
           <p className="mt-3 text-[0.9rem] text-ink-3">Cancel any time. If you haven&apos;t run your free check yet, we&apos;ll do that first so the email is about your business.</p>
           <nav aria-label="Sample for another business type" className="mt-8">

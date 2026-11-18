@@ -38,10 +38,11 @@ export async function POST(req: Request) {
         const s = event.data.object;
         const subId = typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
         // Reply to Stripe right away; writing the email takes longer than Stripe waits.
-        if (s.payment_status === "paid" && s.mode === "subscription") await recordEvent("autopilot_paid");
+        if (s.payment_status === "paid" && s.mode === "subscription" && s.metadata?.product !== "kit") await recordEvent("autopilot_paid");
         if (s.payment_status === "paid" && s.metadata?.product === "kit") await recordEvent("kit_paid");
         if (s.mode === "subscription" && subId) after(() => sendFirstEmail(subId, s.id).then(() => undefined));
-        if (s.mode === "payment" && s.metadata?.product === "kit" && s.payment_status === "paid") after(() => sendKitEmail(s.id).then(() => undefined));
+        // A Kit can be a one-time payment, or (with the free Autopilot week) a subscription checkout.
+        if (s.metadata?.product === "kit" && s.payment_status === "paid") after(() => sendKitEmail(s.id).then(() => undefined));
         break;
       }
       case "checkout.session.async_payment_failed": {

@@ -2,27 +2,44 @@
 import { track } from "@/lib/track";
 import { Children, useEffect, useState } from "react";
 import { Honeypot } from "@/components/Turnstile";
+import { BuyButton } from "@/components/BuyButton";
+import { useCountdown } from "@/components/DealBanner";
 
-/** Phone-only bar that appears once the score has scrolled away, and hides at the offer itself. */
-export function StickyKitBar({ label }: { label: string }) {
+/**
+ * Buy bar pinned to the bottom of the screen (phone and desktop). Shows once the offer at the
+ * top has scrolled away, hides when the full offer at the end is on screen.
+ */
+export function StickyBuyBar({ placeId, industry, kitLabel, endsAt }: { placeId: string; industry: string; kitLabel: string; endsAt: number | null }) {
   const [show, setShow] = useState(false);
+  const { text } = useCountdown(endsAt ?? 0);
   useEffect(() => {
-    const hero = document.getElementById("vis");
-    const offer = document.getElementById("unlock");
     const onScroll = () => {
-      const pastHero = hero ? hero.getBoundingClientRect().bottom < 0 : window.scrollY > 600;
+      const top = document.getElementById("offer");
+      const offer = document.getElementById("unlock");
+      const pastTop = top ? top.getBoundingClientRect().bottom < 0 : window.scrollY > 500;
       const atOffer = offer ? offer.getBoundingClientRect().top < window.innerHeight : false;
-      setShow(pastHero && !atOffer);
+      setShow(pastTop && !atOffer);
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return (
-    <div aria-hidden={!show} className={`fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur transition-transform sm:hidden ${show ? "translate-y-0" : "translate-y-full"}`}>
-      <a href="#fixes" tabIndex={show ? 0 : -1} onClick={() => track("sticky_bar")} className="btn btn-accent w-full !min-h-[52px]">
-        {label} →
-      </a>
+    <div aria-hidden={!show} inert={!show} className={`fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur transition-transform ${show ? "translate-y-0" : "translate-y-full"}`}>
+      <div className="mx-auto flex max-w-3xl items-center gap-3 sm:gap-5">
+        <div className="hidden min-w-0 flex-1 sm:block">
+          <p className="font-semibold leading-tight">Launch Kit · {kitLabel} one time</p>
+          <p className="text-[0.88rem] text-ink-3">
+            Fixes everything this check found.{endsAt && text ? <> Launch deal ends in <span className="font-semibold tabular-nums text-accent">{text}</span>.</> : null}
+          </p>
+        </div>
+        <div className="w-full sm:w-auto" onClick={() => track("sticky_bar")}>
+          <BuyButton product="kit" placeId={placeId} industry={industry} className="btn btn-accent w-full !min-h-[52px] sm:!px-7">
+            Get my Launch Kit · {kitLabel}
+          </BuyButton>
+          {endsAt && text ? <p className="mt-1 text-center text-[0.8rem] text-ink-3 sm:hidden">Launch deal ends in <span className="font-semibold tabular-nums text-accent">{text}</span></p> : null}
+        </div>
+      </div>
     </div>
   );
 }
