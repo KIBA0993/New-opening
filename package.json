@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
     "@vercel/analytics": "^2.0.1",
+    "fflate": "^0.8.2",
     "next": "15.5.29",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
