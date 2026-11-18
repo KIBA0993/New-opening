@@ -130,3 +130,64 @@ export async function mapGrid(place: Place, keyword: string, size: number = FREE
     return null;
   }
 }
+
+// ---------- Reading the grid: one plain sentence, and where each pin sits on a map ----------
+
+const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+
+/** Direction and distance of a cell from the shop (the center cell). */
+function whereIs(grid: GridResult, i: number) {
+  const half = (grid.size - 1) / 2;
+  const dr = Math.floor(i / grid.size) - half; // + is south
+  const dc = (i % grid.size) - half; // + is east
+  const miles = Math.round(Math.hypot(dr, dc) * grid.spacingMiles * 10) / 10;
+  const angle = (Math.atan2(dc, -dr) * 180) / Math.PI; // 0 = north, clockwise
+  const dir = COMPASS[Math.round(((angle + 360) % 360) / 45) % 8];
+  const dist = miles >= 0.9 && miles <= 1.1 ? "about a mile" : `about ${miles} miles`;
+  return `${dist} ${dir}`;
+}
+
+const rankText = (r: number | null) => (r == null ? "out of the top 20" : r <= 3 ? "top 3" : `#${r}`);
+
+/** e.g. "You're top 3 near your shop, but drop to #11 about a mile south." */
+export function gridSentence(grid: GridResult): string {
+  const center = Math.floor(grid.cells.length / 2);
+  const here = grid.cells[center].rank;
+  const worse = (a: number | null, b: number | null) => (a ?? 99) > (b ?? 99);
+  let worst = -1;
+  let best = -1;
+  grid.cells.forEach((c, i) => {
+    if (i === center) return;
+    if (worst < 0 || worse(c.rank, grid.cells[worst].rank)) worst = i;
+    if (best < 0 || worse(grid.cells[best].rank, c.rank)) best = i;
+  });
+  const far = Math.round(grid.spacingMiles * ((grid.size - 1) / 2) * Math.SQRT2 * 10) / 10;
+  if (here != null && here <= 3 && grid.top3 === grid.cells.length) return `You're top 3 on Google Maps everywhere we checked, up to ${far} miles from your shop.`;
+  const start = here == null ? "You don't show up in Google Maps' top 20 even next to your shop" : here <= 3 ? "You're top 3 near your shop" : `You're #${here} near your shop`;
+  const w = grid.cells[worst];
+  if (worst >= 0 && worse(w.rank, here)) return `${start}, but drop to ${w.rank == null ? "outside the top 20" : `#${w.rank}`} ${whereIs(grid, worst)}.`;
+  const b = grid.cells[best];
+  if (best >= 0 && worse(here, b.rank)) return `${start}, and do best ${whereIs(grid, best)} (${rankText(b.rank)}).`;
+  return `${start}, and about the same across ${far} miles around it.`;
+}
+
+/** Map zoom and each pin's position (in % of a square map centered on the shop). */
+export function mapFrame(grid: GridResult) {
+  const c = grid.cells[Math.floor(grid.cells.length / 2)];
+  const spanMeters = grid.size * grid.spacingMiles * 1609.34; // grid plus half a step of margin each side
+  const cos = Math.cos((c.lat * Math.PI) / 180);
+  const zoom = Math.max(10, Math.min(17, Math.floor(Math.log2((156543.03392 * cos * 560) / spanMeters))));
+  const world = 256 * 2 ** zoom;
+  const mercY = (lat: number) => {
+    const s = Math.sin((lat * Math.PI) / 180);
+    return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * world;
+  };
+  // Zoom levels come in steps of 2x, so enlarge the map image a little to make the grid fill the frame.
+  const spanPx = spanMeters / ((156543.03392 * cos) / 2 ** zoom);
+  const scale = Math.max(1, Math.min(2, 560 / spanPx));
+  const pins = grid.cells.map((cell) => ({
+    x: 50 + ((((cell.lng - c.lng) / 360) * world) / 640) * 100 * scale,
+    y: 50 + ((mercY(cell.lat) - mercY(c.lat)) / 640) * 100 * scale,
+  }));
+  return { lat: c.lat, lng: c.lng, zoom, scale, pins };
+}

@@ -1,11 +1,11 @@
 import { DemoTag, Pill } from "@/components/ui";
-import { FREE_GRID, FULL_GRID, gridLive, mapGrid } from "@/lib/providers/grid";
+import { FREE_GRID, FULL_GRID, gridLive, gridSentence, mapFrame, mapGrid } from "@/lib/providers/grid";
 import { getPlace } from "@/lib/providers/places";
 import { checkContext } from "@/lib/report";
 import type { IndustrySlug, Place } from "@/lib/types";
 
 const TONE = (r: number | null) =>
-  r == null ? "bg-[#d9d1c3] text-ink-3" : r <= 3 ? "bg-good text-white" : r <= 10 ? "bg-warn text-white" : "bg-bad text-white";
+  r == null ? "bg-[#8a8378] text-white" : r <= 3 ? "bg-good text-white" : r <= 10 ? "bg-warn text-white" : "bg-bad text-white";
 
 /** Google Maps positions around the shop: 3x3 in the free check, 5x5 for buyers. */
 export async function MapGrid({ place, keyword, size = FREE_GRID, className = "mt-12" }: { place: Place; keyword: string; size?: number; className?: string }) {
@@ -28,8 +28,10 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
 
   const spots = grid.cells.length;
   const center = Math.floor(spots / 2);
-  const across = Math.round(grid.spacingMiles * (grid.size - 1) * 10) / 10;
   const good = grid.top3 / spots;
+  const frame = mapFrame(grid);
+  const mapUrl = `/api/staticmap?lat=${frame.lat.toFixed(5)}&lng=${frame.lng.toFixed(5)}&z=${frame.zoom}`;
+  const pin = spots > 9 ? "h-8 w-8 text-[0.85rem]" : "h-11 w-11 text-[1rem]";
   return (
     <section aria-labelledby="grid" className={className}>
       <div className="flex flex-wrap items-center gap-2">
@@ -37,18 +39,29 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
         <DemoTag show={grid.demo} />
       </div>
       <div className="mt-3">{title}</div>
+      <p className="font-display mt-2 text-[1.25rem] leading-snug">{gridSentence(grid)}</p>
       <p className="mt-1 text-ink-2">
-        Your position for &ldquo;{grid.keyword}&rdquo; from {spots} spots across {across} miles around you. AI assistants lean on these same Maps results.
+        Each pin is where someone nearby searches &ldquo;{grid.keyword}&rdquo;, and the number is where you show up in Google Maps from there. AI assistants lean on these same results.
       </p>
-      <div className="mx-auto mt-5 grid max-w-sm gap-1.5" style={{ gridTemplateColumns: `repeat(${grid.size}, minmax(0, 1fr))` }} role="table" aria-label="Google Maps position by location, north at top">
+      <div
+        className="relative mx-auto mt-5 aspect-square w-full max-w-md overflow-hidden rounded-2xl border border-line bg-paper-3 bg-center bg-no-repeat"
+        style={grid.demo ? undefined : { backgroundImage: `url(${mapUrl})`, backgroundSize: `${frame.scale * 100}%` }}
+        role="img"
+        aria-label={`Map of Google Maps positions around your shop. ${gridSentence(grid)}`}
+      >
         {grid.cells.map((c, i) => (
-          <div key={i} role="cell" className={`flex aspect-square items-center justify-center rounded-lg text-[1rem] font-semibold ${TONE(c.rank)} ${i === center ? "ring-2 ring-ink ring-offset-2 ring-offset-paper" : ""}`} aria-label={`${i === center ? "Your shop: " : ""}${c.rank ? `position ${c.rank}` : "not in the top 20"}`}>
+          <span
+            key={i}
+            aria-hidden="true"
+            className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full font-semibold shadow-md ring-2 ring-white ${pin} ${TONE(c.rank)} ${i === center ? "outline outline-2 outline-offset-2 outline-ink" : ""}`}
+            style={{ left: `${frame.pins[i].x}%`, top: `${frame.pins[i].y}%` }}
+          >
             {c.rank ?? "20+"}
-          </div>
+          </span>
         ))}
       </div>
       <p className="mt-3 text-center text-[0.9rem] text-ink-3">
-        Outlined square is your shop. Green is top 3, amber is 4 to 10, red is 11 to 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
+        The outlined pin is your shop. Green is top 3, amber is 4 to 10, red is 11 to 20, gray is not in the top 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
         {grid.size < FULL_GRID ? ` The Launch Kit and Autopilot show a ${FULL_GRID}x${FULL_GRID} map that refreshes weekly.` : " Refreshes weekly."}
       </p>
     </section>
