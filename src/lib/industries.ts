@@ -15,6 +15,7 @@ export interface Industry {
   campaigns: { title: string; idea: string }[];
   eventKinds: string[];
   servicesPlaceholder: string;
+  starterServices: string[]; // prefilled in onboarding before the AI guess arrives
   differentPlaceholder: string;
   faqs: { q: string; a: string }[];
 }
@@ -46,6 +47,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["home and garden shows", "neighborhood association meetings", "community cleanup days", "school fundraisers that take sponsors"],
     servicesPlaceholder: "Deep cleaning, move-out cleaning, weekly cleaning for homes and small offices",
+    starterServices: ["House cleaning", "Deep cleaning", "Move-out cleaning", "Office cleaning"],
     differentPlaceholder: "Family-owned, eco-friendly products, same-week booking",
     faqs: [
       { q: "I work from home. Will my address show up?", a: "No. We set you up as a service-area business, so customers see the towns you serve, not your house." },
@@ -78,6 +80,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["holiday markets", "bridal shows", "pop-up shops", "charity fashion shows"],
     servicesPlaceholder: "Gel manicures, acrylic sets, pedicures, nail art",
+    starterServices: ["Manicures", "Pedicures", "Gel nails", "Nail art"],
     differentPlaceholder: "Private suite, non-toxic polish, evening appointments",
     faqs: [
       { q: "I rent a suite inside a bigger salon. Can I have my own Google profile?", a: "Yes, if you have your own business name and serve clients there during your hours. We walk you through it." },
@@ -110,6 +113,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["night markets", "holiday markets", "farmers markets", "festivals", "brewery pop-ups", "vendor calls"],
     servicesPlaceholder: "Birria tacos, quesadillas, horchata. Catering for 20 to 200.",
+    starterServices: ["Tacos", "Burritos", "Drinks", "Catering"],
     differentPlaceholder: "Family recipes, handmade tortillas, vegan options",
     faqs: [
       { q: "My truck moves around. Can I still be on Google?", a: "Yes. You list the area you serve, and post where you'll be each week." },
@@ -142,6 +146,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["adoption days", "dog-friendly brewery events", "pet expos", "charity walks"],
     servicesPlaceholder: "Full grooms, bath and brush, nail trims, puppy intro grooms",
+    starterServices: ["Full grooming", "Bath and brush", "Nail trims", "Puppy grooming"],
     differentPlaceholder: "Fear-free certified, one dog at a time, pickup and drop-off",
     faqs: [
       { q: "I'm mobile. Do I need a shop address?", a: "No. We set you up as a service-area business that lists the neighborhoods you cover." },
@@ -174,6 +179,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["health fairs", "charity runs", "corporate wellness days", "community yoga in the park"],
     servicesPlaceholder: "Deep tissue massage, prenatal massage, sports recovery",
+    starterServices: ["Deep tissue massage", "Swedish massage", "Prenatal massage", "Sports massage"],
     differentPlaceholder: "Evening and weekend hours, accepts HSA, free parking",
     faqs: [
       { q: "Is this OK for medical practices?", a: "Yes. We never ask for or store patient information. Review requests are general, never about treatment." },
@@ -206,6 +212,7 @@ export const INDUSTRIES: Industry[] = [
     ],
     eventKinds: ["night markets", "food festivals", "restaurant weeks", "holiday markets", "charity dinners"],
     servicesPlaceholder: "Wood-fired pizza, house pastas, natural wine. Brunch on weekends.",
+    starterServices: ["Dinner", "Lunch", "Brunch", "Takeout", "Catering"],
     differentPlaceholder: "Chef from Naples, dough made daily, patio with heaters",
     faqs: [
       { q: "Can you update my menu on Google for me?", a: "You stay in control of your profile. We write it, and you paste it in with one tap." },
@@ -218,13 +225,15 @@ export const industryBySlug = (slug?: string | null): Industry | undefined =>
   INDUSTRIES.find((i) => i.slug === slug);
 
 /** Guess the industry from Google place types. */
-export function guessIndustry(types: string[] = [], primaryType?: string): IndustrySlug | undefined {
-  const hay = [primaryType || "", ...types].join(" ").toLowerCase();
-  // Order matters: more specific first.
+export function guessIndustry(types: string[] = [], primaryType?: string, name?: string): IndustrySlug | undefined {
+  // Order matters: more specific first. Google's types win; the business name is a fallback.
   const order: IndustrySlug[] = ["food-trucks", "pet", "beauty", "home-services", "wellness", "restaurants"];
-  for (const slug of order) {
-    const ind = INDUSTRIES.find((i) => i.slug === slug)!;
-    if (ind.match.test(hay)) return slug;
+  for (const hay of [[primaryType || "", ...types].join(" "), (name || "").replace(/\s+/g, "_")]) {
+    const h = hay.toLowerCase();
+    if (!h.trim()) continue;
+    for (const slug of order) {
+      if (INDUSTRIES.find((i) => i.slug === slug)!.match.test(h)) return slug;
+    }
   }
   return undefined;
 }

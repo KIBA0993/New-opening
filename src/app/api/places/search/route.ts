@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     const { places, demo } = await searchBusinesses(q);
     return NextResponse.json({
       demo,
-      places: places.map((p) => ({ ...p, industryGuess: guessIndustry(p.types, p.primaryType) })),
+      places: places.map((p) => ({ ...p, industryGuess: guessIndustry(p.types, p.primaryType, p.name) })),
     });
   } catch (e) {
     console.error(e);

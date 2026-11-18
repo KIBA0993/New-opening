@@ -35,7 +35,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   }
   if (!place) notFound();
 
-  const industry = (industryBySlug(sp.industry)?.slug || guessIndustry(place.types, place.primaryType) || "home-services") as IndustrySlug;
+  const industry = (industryBySlug(sp.industry)?.slug || guessIndustry(place.types, place.primaryType, place.name) || "home-services") as IndustrySlug;
   const allowed = await allowCheck(`${id}|${place.name}|${industry}`);
   const path = id === "new"
     ? `/report/new?industry=${industry}&name=${encodeURIComponent(place.name)}&city=${encodeURIComponent(place.city || "")}`

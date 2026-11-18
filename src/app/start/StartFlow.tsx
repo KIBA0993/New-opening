@@ -4,13 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchBox } from "@/components/SearchBox";
 import { DemoTag } from "@/components/ui";
 import { reportPath, saveProfile } from "@/lib/clientProfile";
-import { INDUSTRIES, industryBySlug } from "@/lib/industries";
 import type { IndustrySlug, OwnerProfile, Place } from "@/lib/types";
+import { Details } from "./Details";
 
 type Found = Place & { industryGuess?: IndustrySlug };
-type Step = "loading" | "pick" | "notfound" | "manage" | "industry" | "services" | "different" | "areas" | "email";
-
-const QUESTION_STEPS: Step[] = ["manage", "industry", "services", "different", "areas", "email"];
+type Step = "loading" | "pick" | "notfound" | "details";
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -93,25 +91,14 @@ export function StartFlow() {
       website: r.website,
       industry: x.industry || r.industryGuess,
       areas: x.areas || (r.city ? r.city.split(",")[0] : ""),
+      // Asked later, inside the kit, where it matters. "unsure" shows both the edit and the claim steps.
+      managesProfile: x.managesProfile || "unsure",
     }));
-    setStep("manage");
+    setStep("details");
   }
 
-  const industry = industryBySlug(p.industry);
-  const qIndex = QUESTION_STEPS.indexOf(step);
-  const totalQ = p.placeId === "new" ? QUESTION_STEPS.length - 1 : QUESTION_STEPS.length;
-  const qNumber = p.placeId === "new" ? qIndex : qIndex + 1;
-
   function back() {
-    const prev: Partial<Record<Step, Step>> = {
-      manage: "pick",
-      industry: p.placeId === "new" ? "notfound" : "manage",
-      services: "industry",
-      different: "services",
-      areas: "different",
-      email: "areas",
-    };
-    setStep(prev[step] || "pick");
+    setStep(p.placeId === "new" && step === "details" ? "notfound" : "pick");
   }
 
   async function finish(e: React.FormEvent) {
@@ -150,17 +137,11 @@ export function StartFlow() {
 
   return (
     <div className="mx-auto max-w-xl px-4 pt-8 pb-10 sm:pt-14">
-      {qIndex >= 0 ? (
-        <div className="mb-6 flex items-center justify-between gap-4">
+      {step === "details" ? (
+        <div className="mb-4">
           <button type="button" onClick={back} className="py-2 font-semibold text-ink-2 hover:text-ink">
-            ← Back
+            ← {p.placeId === "new" ? "Back" : "Not the right business?"}
           </button>
-          <div className="flex items-center gap-3 text-[0.9rem] text-ink-3" aria-label={`Question ${qNumber} of ${totalQ}`}>
-            {qNumber} of {totalQ}
-            <span className="h-1.5 w-24 overflow-hidden rounded-full bg-paper-3" aria-hidden>
-              <span className="block h-full bg-ink transition-all" style={{ width: `${(qNumber / totalQ) * 100}%` }} />
-            </span>
-          </div>
         </div>
       ) : null}
 
@@ -240,7 +221,7 @@ export function StartFlow() {
           onSubmit={(e) => {
             e.preventDefault();
             setP((x) => ({ ...x, placeId: "new", managesProfile: "none", areas: x.areas || (x.city || "").split(",")[0] }));
-            setStep("industry");
+            setStep("details");
           }}
         >
           <Heading>You're not on Google yet. That's fine.</Heading>
@@ -263,103 +244,7 @@ export function StartFlow() {
         </form>
       )}
 
-      {step === "manage" && place && (
-        <>
-          <Heading>Do you manage this Google profile?</Heading>
-          <p className="mt-3 text-ink-2">
-            Google doesn't show us who controls <b>{place.name}</b>. If you can't sign in and edit it, your kit will start with claiming it.
-          </p>
-          <div className="mt-6 grid gap-3">
-            {(
-              [
-                ["yes", "Yes, I can sign in and edit it"],
-                ["no", "No, or someone else set it up"],
-                ["unsure", "I'm not sure"],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => {
-                  setP({ ...p, managesProfile: v });
-                  setStep("industry");
-                }}
-                className="card p-4 text-left text-[1.05rem] font-semibold hover:border-ink"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {step === "industry" && (
-        <>
-          <Heading>What kind of business is it?</Heading>
-          <div className="mt-6 grid gap-3" role="radiogroup" aria-label="Business type">
-            {INDUSTRIES.map((i) => (
-              <button
-                key={i.slug}
-                type="button"
-                role="radio"
-                aria-checked={p.industry === i.slug}
-                onClick={() => {
-                  setP({ ...p, industry: i.slug });
-                  setStep("services");
-                }}
-                className={`card p-4 text-left hover:border-ink ${p.industry === i.slug ? "border-ink outline outline-1 outline-ink" : ""}`}
-              >
-                <span className="block font-semibold">{i.name}</span>
-                <span className="block text-[0.9rem] text-ink-3">{i.who[0].toUpperCase() + i.who.slice(1)}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {step === "services" && industry && (
-        <form onSubmit={(e) => { e.preventDefault(); setStep("different"); }}>
-          <Heading>{industry.menuWord === "menu" ? "What's on your menu?" : "What do you offer?"}</Heading>
-          <p className="mt-3 text-ink-2">List your main {industry.menuWord === "menu" ? "dishes or drinks" : "services"}. Short is fine. We'll write it up properly.</p>
-          <label htmlFor="svc" className="sr-only">{industry.menuWord}</label>
-          <textarea id="svc" required rows={4} maxLength={480} className="field mt-6" placeholder={industry.servicesPlaceholder} value={p.services || ""} onChange={(e) => setP({ ...p, services: e.target.value })} />
-          <button className="btn btn-primary mt-6 w-full">Continue</button>
-        </form>
-      )}
-
-      {step === "different" && industry && (
-        <form onSubmit={(e) => { e.preventDefault(); setStep("areas"); }}>
-          <Heading>Why do customers pick you?</Heading>
-          <p className="mt-3 text-ink-2">What makes you different from the place down the street? A few words is plenty.</p>
-          <label htmlFor="diff" className="sr-only">What makes you different</label>
-          <textarea id="diff" rows={3} maxLength={480} className="field mt-6" placeholder={industry.differentPlaceholder} value={p.different || ""} onChange={(e) => setP({ ...p, different: e.target.value })} />
-          <button className="btn btn-primary mt-6 w-full">Continue</button>
-          <button type="button" onClick={() => setStep("areas")} className="mt-3 w-full py-2 text-ink-3 underline underline-offset-4">Skip for now</button>
-        </form>
-      )}
-
-      {step === "areas" && industry && (
-        <form onSubmit={(e) => { e.preventDefault(); setStep("email"); }}>
-          <Heading>{industry.serviceArea ? "Which areas do you serve?" : "Which neighborhoods are your customers from?"}</Heading>
-          <p className="mt-3 text-ink-2">Neighborhoods or towns, separated by commas. These go into your profiles so locals find you.</p>
-          <label htmlFor="areas" className="sr-only">Areas</label>
-          <input id="areas" required maxLength={480} className="field mt-6" placeholder="East Austin, Mueller, Hyde Park" value={p.areas || ""} onChange={(e) => setP({ ...p, areas: e.target.value })} />
-          <button className="btn btn-primary mt-6 w-full">Continue</button>
-        </form>
-      )}
-
-      {step === "email" && (
-        <form onSubmit={finish}>
-          <Heading>Where should we send your results?</Heading>
-          <p className="mt-3 text-ink-2">We'll email you a link to your check so you can come back to it. No spam.</p>
-          <label htmlFor="email" className="mt-6 block font-semibold">Email</label>
-          <input id="email" type="email" required autoComplete="email" inputMode="email" className="field mt-2" value={p.email || ""} onChange={(e) => setP({ ...p, email: e.target.value })} />
-          <button className="btn btn-accent mt-6 w-full !min-h-[56px] text-[1.05rem]" disabled={busy}>
-            {busy ? "Starting your check…" : "Run my free check"}
-          </button>
-          <p className="mt-3 text-[0.9rem] text-ink-3">We'll ask AI assistants about businesses like yours near you. It takes about 30 seconds.</p>
-        </form>
-      )}
+      {step === "details" && <Details p={p} setP={setP} place={place} busy={busy} onSubmit={finish} />}
     </div>
   );
 }
