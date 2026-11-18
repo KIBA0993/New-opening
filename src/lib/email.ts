@@ -1,0 +1,87 @@
+import "server-only";
+import { env, has } from "./env";
+import { ENGINE_LABEL } from "./providers/ai";
+import type { WeeklyDigest } from "./types";
+
+export async function sendEmail(to: string, subject: string, html: string) {
+  if (!has.resend()) {
+    console.log(`[email:demo] to=${to} subject="${subject}" (${html.length} chars)`);
+    return { ok: true, demo: true };
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.resend}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: env.emailFrom, to: [to], subject, html }),
+  });
+  if (!res.ok) console.error("Resend failed", res.status, await res.text());
+  return { ok: res.ok, demo: false };
+}
+
+/** Save a lead to the Resend audience for follow-up (optional). */
+export async function saveLead(email: string, firstName?: string) {
+  if (!has.resend() || !env.resendAudience) return;
+  await fetch(`https://api.resend.com/audiences/${env.resendAudience}/contacts`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.resend}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, first_name: firstName, unsubscribed: false }),
+  }).catch(() => undefined);
+}
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+const wrap = (inner: string) => `<!doctype html><html><body style="margin:0;background:#F4EFE6;font-family:Georgia,'Times New Roman',serif;color:#1C1A16">
+<div style="max-width:560px;margin:0 auto;padding:28px 20px">
+<div style="font:600 13px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#B4441A">Opening Day</div>
+${inner}
+<p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459;margin-top:32px">You're getting this because you signed up at Opening Day. <a href="${env.siteUrl}/account" style="color:#6B6459">Manage or cancel</a>.</p>
+</div></body></html>`;
+
+const h2 = (t: string) => `<h2 style="font:600 20px/1.3 Georgia,serif;margin:28px 0 8px">${esc(t)}</h2>`;
+const p = (t: string) => `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 12px">${t}</p>`;
+const box = (t: string) =>
+  `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:8px 0 12px;font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(t)}</div>`;
+
+export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string } = {}) {
+  const named = d.visibility.filter((v) => v.mentionsYou).length;
+  const vis = d.visibility
+    .map((v) => `${v.mentionsYou ? "🟢" : "🔴"} <b>${ENGINE_LABEL[v.engine]}</b> ${v.mentionsYou ? "named you" : "didn't name you"}`)
+    .join("<br>");
+  const moves = d.rivalMoves.length
+    ? d.rivalMoves.map((m) => p(`<b>${esc(m.rival)}</b>: ${esc(m.move)}<br><span style="color:#2F6B45">Your move: ${esc(m.counter)}</span>`)).join("")
+    : p("Quiet week. No big moves from your rivals.");
+  const events = d.events
+    .map((e) => `${p(`<b>${esc(e.title)}</b> · ${esc(e.date)} · ${esc(e.where)}<br>${esc(e.why)}${e.url ? ` <a href="${esc(e.url)}" style="color:#B4441A">Details</a>` : ""}`)}${box(e.pitch)}`)
+    .join("");
+  return wrap(`
+<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">${esc(d.business)}: your week of ${esc(d.weekOf)}</h1>
+${p(`Five minutes, five things. Everything is written for you. Copy, paste, done.`)}
+${h2(`1. Are AI tools recommending you? ${named} of ${d.visibility.length}`)}
+${p(vis)}
+${links.account ? p(`Changed something? <a href="${links.account}" style="color:#B4441A">Run a fresh check now</a> with one of your monthly re-checks.`) : ""}
+${h2("2. What your rivals did")}
+${moves}
+${h2("3. Your Google post for this week")}
+${box(d.googlePost)}
+${p(`Paste it at <a href="https://business.google.com" style="color:#B4441A">business.google.com</a> → Add update.`)}
+${h2("4. Reviews to answer")}
+${d.reviewReplies.map((r) => p(`<i>${esc(r.review)}</i>`) + box(r.reply)).join("")}
+${h2(`5. Idea of the week: ${d.campaign.title}`)}
+${p(esc(d.campaign.idea))}
+${h2("Events near you to join or sponsor")}
+${events || p("No good matches this week. We'll keep looking.")}
+${links.kit ? p(`<a href="${links.kit}" style="color:#B4441A">Open your Launch Kit</a>`) : ""}
+`);
+}
+
+export function renderKitEmail(name: string, kitUrl: string) {
+  return wrap(`<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">Your Launch Kit for ${esc(name)} is ready</h1>
+${p("Everything is written. Set aside one afternoon, go step by step, and tap copy next to each piece.")}
+${p(`<a href="${kitUrl}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">Open my Launch Kit</a>`)}
+${p("Keep this email. The link is your key to the kit.")}`);
+}
+
+export function renderReportEmail(name: string, reportUrl: string, headline: string) {
+  return wrap(`<h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">Your free check for ${esc(name)}</h1>
+${p(esc(headline))}
+${p(`<a href="${reportUrl}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:12px 18px;border-radius:999px;text-decoration:none">See the full results</a>`)}`);
+}
