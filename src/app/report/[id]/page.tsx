@@ -10,7 +10,7 @@ import { env, PRICES } from "@/lib/env";
 import { guessIndustry, industryBySlug } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
 import { getPlace } from "@/lib/providers/places";
-import { isHuman, looksLikeBot } from "@/lib/guard";
+import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
 import { HumanCheck } from "./HumanCheck";
 import { GUIDES } from "@/lib/platforms";
@@ -47,6 +47,17 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
         <p className="eyebrow">Free check</p>
         <HumanCheck />
+      </div>
+    );
+  }
+
+  // Each view makes Google lookups, so cap page loads per visitor: plenty for a person, not for a script.
+  if (!(await allowIp("report-view", 30, 600))) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+        <p className="eyebrow">Free check</p>
+        <h1 className="font-display mt-2 text-[2.2rem] leading-tight">Too many reloads</h1>
+        <p className="mt-2 text-ink-2">You've opened a lot of checks in the last few minutes. Please wait about 10 minutes and try again.</p>
       </div>
     );
   }
