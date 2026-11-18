@@ -2,12 +2,14 @@
 import Link from "next/link";
 import QRCode from "qrcode";
 import { useEffect, useMemo, useState } from "react";
-import { CopyBlock, CopyButton } from "@/components/CopyButton";
+import { CharCount, CopyBlock, CopyButton, RichCopyButton } from "@/components/CopyButton";
 import { DemoTag } from "@/components/ui";
 import { BuyButton } from "@/components/BuyButton";
 import type { Directory } from "@/lib/directories";
 import { doneCount, isDone, MANUAL_STEPS, STEP_IDS, type KitProgress, type StepCheck, type StepId } from "@/lib/kitSteps";
-import type { PlatformGuide } from "@/lib/platforms";
+import { LIMITS, shortcuts, type PlatformGuide } from "@/lib/platforms";
+import { cleanSlug, textToHtml, websiteZip } from "@/lib/websiteFiles";
+import { SiteEditor, type PublishedSite } from "./SiteEditor";
 import type { LaunchKit, OwnerProfile } from "@/lib/types";
 
 /** The Kit buyer's Autopilot: on (free week or paid), cancelled, or not bought (offer it). */
@@ -32,9 +34,10 @@ interface Props {
   robots: string;
   autopilot: AutopilotState;
   initialProgress: KitProgress;
+  site?: PublishedSite | null;
 }
 
-export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot, initialProgress }: Props) {
+export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot, initialProgress, site = null }: Props) {
   const [progress, setProgress] = useState<KitProgress>(initialProgress);
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState("");
@@ -57,6 +60,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
     setChecking(false);
     if (p?.check) {
       const confirmed = STEP_IDS.filter((id) => p.check!.steps[id]?.state === "done").length;
+      setTimeout(() => setCheckMsg(""), 10000);
       setCheckMsg(confirmed ? `We confirmed ${confirmed} step${confirmed === 1 ? "" : "s"} from your live listings and website.` : "Nothing confirmed yet. Changes on Google and other sites can take a few days to show.");
     }
   }
@@ -109,11 +113,22 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
       website: { label: "Website", value: profile.website || "No website yet? Leave it blank for now.", hint: "" },
       category: { label: "Category", value: kit.primaryCategory, hint: "Pick the closest match the platform offers." },
       short: { label: "Short description", value: kit.shortDescription, hint: "" },
+      bio: { label: "Bio (101 characters)", value: shortBio(kit, profile), hint: "Facebook's bio is short. Use the longer description in About.", limit: LIMITS.facebookBio },
       description: { label: "Description", value: kit.description, hint: "" },
       services: { label: "Services", value: kit.services.map((s) => `${s.name}: ${s.description}`).join("\n"), hint: "" },
     }),
     [profile, kit, serviceArea],
-  );
+  ) as Record<string, { label: string; value: string; hint: string; limit?: number }>;
+
+  function downloadSite() {
+    const bytes = websiteZip(kit, profile, schema, industryName.toLowerCase().includes("restaurant") || industryName.toLowerCase().includes("food") ? "menu" : "Services");
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/zip" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${profile.name.replace(/\W+/g, "-").replace(/^-|-$/g, "") || "website"}-website-pages.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-8 pb-10 sm:px-6 sm:pt-12">
@@ -149,7 +164,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           intro="AI tools trust businesses whose name, address and phone match on every site. Use these exact details everywhere.">
           <div className="grid gap-3">
             {(["name", "address", "phone", "website"] as const).map((f) => (
-              <CopyBlock key={f} label={fields[f].label} text={fields[f].value} hint={fields[f].hint} />
+              <CopyBlock key={f} label={fields[f].label} text={fields[f].value} hint={fields[f].hint} limit={fields[f].limit} />
             ))}
           </div>
         </Step>
@@ -175,11 +190,11 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
               </p>
             </div>
           ) : null}
-          <Guide guide={guides[0]} />
+          <Guide guide={guides[0]} links={shortcuts("google", profile)} />
           <div className="mt-5 grid gap-3">
             <CopyBlock label="Primary category" text={kit.primaryCategory} hint="Your most important choice. Choose this one first." />
             <CopyBlock label="Secondary categories" text={kit.secondaryCategories.join("\n")} hint="Add these after you're verified." />
-            <CopyBlock label="Description" text={kit.description} hint={`${kit.description.length} of 750 characters`} />
+            <CopyBlock label="Description" text={kit.description} limit={LIMITS.googleDescription} />
             <div className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold">Services</p>
@@ -191,6 +206,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
                     <span>
                       <span className="block font-semibold">{s.name}</span>
                       <span className="text-ink-2">{s.description}</span>
+                      {[...s.description].length > LIMITS.googleService ? <span className="block text-[0.85rem]"><CharCount text={s.description} limit={LIMITS.googleService} /></span> : null}
                     </span>
                     <CopyButton text={`${s.name}\n${s.description}`} />
                   </li>
@@ -226,6 +242,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
                       <CopyButton text={x.body} />
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-ink-2">{x.body}</p>
+                    <p className="mt-1 text-[0.85rem] text-ink-3"><CharCount text={x.body} limit={LIMITS.googlePost} /></p>
                   </li>
                 ))}
               </ol>
@@ -241,10 +258,10 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
 
         {guides.slice(1).map((g, i) => (
           <Step key={g.platform} n={5 + i} id={g.platform as StepId} title={`Get on ${g.name}`} done={done[g.platform as StepId]} check={checks[g.platform as StepId]} onToggle={toggle} intro={g.why}>
-            <Guide guide={g} />
+            <Guide guide={g} links={shortcuts(g.platform, profile)} />
             <div className="mt-5 grid gap-3">
               {g.fields.map((f) => (
-                <CopyBlock key={f} label={fields[f].label} text={fields[f].value} hint={fields[f].hint} />
+                <CopyBlock key={f} label={fields[f].label} text={fields[f].value} hint={fields[f].hint} limit={fields[f].limit} />
               ))}
               {g.platform === "yelp" && kit.yelp ? (
                 <>
@@ -278,19 +295,30 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
         <Step n={6 + guides.length - 1} id="website" title="Make your website easy for AI to quote" done={done.website} check={checks.website} onToggle={toggle}
           intro="Gemini and Perplexity cite business websites in about 9 of 10 local answers. A page per service is what wins specific questions, even against bigger rivals. Send this step to whoever runs your site, or paste it into your site builder.">
           <div className="grid gap-3">
+            {storeKey.startsWith("preview:") ? null : <SiteEditor storeKey={storeKey} kit={kit} profile={profile} initial={site} open={!profile.website} />}
+            <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                <span className="block font-semibold">Download every page as files</span>
+                <span className="text-[0.95rem] text-ink-2">Ready-made pages with your schema built in, a WordPress import file, and simple steps for Wix and Squarespace.</span>
+              </span>
+              <button type="button" onClick={downloadSite} className="btn btn-primary !min-h-[44px] shrink-0">Download (.zip)</button>
+            </div>
             {kit.servicePages?.length ? (
               <div className="card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold">One page per service</p>
                   <CopyButton text={kit.servicePages.map((x) => `${x.title}\n/${x.slug}\n\n${x.body}`).join("\n\n---\n\n")} label="Copy all" />
                 </div>
-                <p className="text-[0.85rem] text-ink-3">Use the title as the page heading and the address shown as the page link. Fill in the [brackets].</p>
+                <p className="text-[0.85rem] text-ink-3">Use the title as the page heading and the address shown as the page link. Fill in the [brackets]. On Wix or Squarespace, &ldquo;Copy formatted&rdquo; keeps headings and lists when you paste.</p>
                 <ul className="mt-3 space-y-3">
                   {kit.servicePages.map((x) => (
-                    <li key={x.slug} className="border-t border-line pt-3">
+                    <li key={cleanSlug(x.slug)} className="border-t border-line pt-3">
                       <div className="flex items-start justify-between gap-3">
                         <p className="font-semibold">{x.title} <span className="font-normal text-ink-3">/{x.slug}</span></p>
-                        <CopyButton text={`${x.title}\n\n${x.body}`} />
+                        <span className="flex shrink-0 flex-wrap justify-end gap-2">
+                          <RichCopyButton html={`<h1>${x.title}</h1>\n${textToHtml(x.body)}`} text={`${x.title}\n\n${x.body}`} />
+                          <CopyButton text={`${x.title}\n\n${x.body}`} />
+                        </span>
                       </div>
                       <p className="mt-1 whitespace-pre-wrap text-ink-2">{x.body}</p>
                     </li>
@@ -401,7 +429,7 @@ function CheckResult({ id, check }: { id: StepId; check?: StepCheck }) {
   );
 }
 
-function Guide({ guide }: { guide: PlatformGuide }) {
+function Guide({ guide, links = [] }: { guide: PlatformGuide; links?: { label: string; url: string; note?: string }[] }) {
   return (
     <div className="card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -415,6 +443,12 @@ function Guide({ guide }: { guide: PlatformGuide }) {
           <li key={s}>{s}</li>
         ))}
       </ol>
+      {links.map((l) => (
+        <div key={l.url} className="mt-4 rounded-xl border border-line p-3">
+          <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent underline underline-offset-4">{l.label} ↗</a>
+          {l.note ? <p className="mt-1 text-[0.95rem] text-ink-2">{l.note}</p> : null}
+        </div>
+      ))}
       {guide.note ? <p className="mt-4 rounded-xl bg-warn-bg p-3 text-[0.95rem] text-warn">{guide.note}</p> : null}
     </div>
   );
@@ -515,4 +549,18 @@ function AutopilotSection({ a, profile }: { a: AutopilotState; profile: OwnerPro
       )}
     </section>
   );
+}
+
+/** A bio that fits Facebook's 101 characters: the first sentence of the short description, or category, town and top services. */
+function shortBio(kit: LaunchKit, p: OwnerProfile) {
+  const max = LIMITS.facebookBio;
+  const first = (kit.shortDescription.match(/^[^.!?]+[.!?]/)?.[0] || kit.shortDescription).trim();
+  if ([...first].length <= max) return first;
+  const town = p.city.split(",")[0].trim();
+  const names = kit.services.map((s) => s.name);
+  for (let n = Math.min(3, names.length); n >= 0; n--) {
+    const t = `${kit.primaryCategory} in ${town}${n ? `: ${names.slice(0, n).join(", ")}` : ""}.`;
+    if ([...t].length <= max) return t;
+  }
+  return `${kit.primaryCategory} in ${town}.`.slice(0, max);
 }

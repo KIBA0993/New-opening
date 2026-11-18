@@ -89,6 +89,7 @@ export interface SiteFacts {
   schema: boolean; // LocalBusiness-style JSON-LD
   credentials: boolean; // mentions a license, insurance or certification
   prices: boolean; // shows prices
+  address: boolean | null; // shows the street address Google has (null = no street number to look for)
   blocked: { chatgpt: boolean; perplexity: boolean; gemini: boolean } | null; // robots.txt shuts out the AI search crawler
 }
 
@@ -112,6 +113,13 @@ function blockedFor(robots: string, agent: string): boolean {
   const own = groups.find((g) => g.agents.includes(agent.toLowerCase())) || groups.find((g) => g.agents.includes("*"));
   if (!own) return false;
   return own.rules.includes("disallow:/") && !own.rules.some((r) => r.startsWith("allow:/"));
+}
+
+/** Does the page text show the street address ("1200 Elm")? null when the address has no street number. */
+function streetIn(address: string | undefined, lowerText: string): boolean | null {
+  const m = (address || "").match(/^\s*(\d+[a-z]?)\s+([a-z0-9]+)/i);
+  if (!m) return null;
+  return new RegExp(`\\b${m[1].toLowerCase()}\\s+(?:[nsew]\\.?\\s+)?${m[2].toLowerCase()}`).test(lowerText.replace(/\s+/g, " "));
 }
 
 /** What the business's website shows that AI assistants look for, read now (no cache). Throws when the site can't be read. */
@@ -166,6 +174,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
     schema: /application\/ld\+json[\s\S]{0,4000}?"@type"\s*:\s*\[?\s*"[A-Za-z]*(LocalBusiness|Service|Store|Restaurant|Salon|Shop|Plumber|Electrician|Contractor|Dentist|Spa|Cleaning|Care|Clinic|Physician|Business)"/i.test(html),
     credentials: /\blicen[cs]ed\b|\blicen[cs]e\s*(#|no\.?|number)|\binsured\b|\bbonded\b|\bcertified\b|\bcertification\b|\baccredited\b/i.test(text),
     prices: /\$\s?\d{2,}/.test(text),
+    address: streetIn(place.address, lower),
     blocked,
   };
 }

@@ -15,11 +15,14 @@ export interface DirectoryHit {
   facebook: boolean | null;
   /** Industry directory domains seen with this business's page in the top 10 results; null when the search failed. */
   others: string[] | null;
+  /** Search snippets of the business's own Yelp and directory pages, for spotting a different phone. */
+  snippets?: { site: string; text: string }[];
 }
 
 interface Node {
   type?: string;
   title?: string;
+  description?: string;
   website_name?: string;
   breadcrumb?: string;
   domain?: string;
@@ -87,6 +90,9 @@ export async function directories(name: string, address: string, placeId?: strin
     yelp: links.includes("yelp") || items.some((i) => yelpPage(i, name)) ? true : null,
     facebook: ours ? links.includes("facebook") : null,
     others: domains.filter((d) => items.some((i) => directoryPage(i, name, d)) || links.some((l) => l.length > 3 && d.startsWith(l.replace(/\s+/g, "")))),
+    snippets: items
+      .filter((i) => yelpPage(i, name) || domains.some((d) => directoryPage(i, name, d)))
+      .map((i) => ({ site: i.website_name || i.domain || "", text: `${i.title || ""} ${i.description || ""}` })),
   };
 }
 

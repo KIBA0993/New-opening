@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { has } from "./env";
 import { industryBySlug, searchTerm, buildPrompts } from "./industries";
 import { seeded } from "./mock";
 import { cachedAsk, checkEngines, mentions, writeJSON } from "./providers/ai";
@@ -133,7 +134,9 @@ Return JSON: {
       `${season} at ${place.name}: ${profile.different || "we're here for the neighborhood"}. ${profile.services ? `Book ${profile.services.split(",")[0].trim().toLowerCase()} this week` : "Stop by this week"} and tell us you saw this post.`,
     reviewReplies: reviews.length
       ? reviews.map((r, i) => ({ review: `${r.rating}★ ${r.author}: ${r.text.slice(0, 160)}`, reply: written?.reviewReplies?.[i] || `Thank you so much, ${r.author.split(" ")[0]}! We're so glad you came in.` }))
-      : [{ review: "5★ Maria G.: So happy I found this place, super friendly!", reply: `Thank you, Maria! Being new, reviews like yours mean a lot. See you next time!` }],
+      : place.id.startsWith("demo_") || !has.places()
+        ? [{ review: "5★ Maria G.: So happy I found this place, super friendly!", reply: `Thank you, Maria! Being new, reviews like yours mean a lot. See you next time!` }]
+        : [], // no new reviews: the email nudges them to ask instead of showing a made-up one
     campaign: written?.campaign || fallbackCampaign,
     events,
     demo: !written || rivalsDemo || eventsDemo,

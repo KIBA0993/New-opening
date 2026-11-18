@@ -10,8 +10,30 @@ export interface PlatformGuide {
   url: string;
   minutes: number;
   steps: string[];
-  fields: ("name" | "address" | "phone" | "website" | "category" | "short" | "description" | "services")[];
+  fields: ("name" | "address" | "phone" | "website" | "category" | "short" | "bio" | "description" | "services")[];
   note?: string;
+}
+
+/** Character limits of the fields owners paste into (checked Nov 2026). */
+export const LIMITS = { googleDescription: 750, googleService: 300, googlePost: 1500, facebookBio: 101 } as const;
+
+/** Links that jump straight to the owner's own listing or the right search, so there's less hunting. */
+export function shortcuts(platform: Platform, p: { name: string; address: string; city: string; placeId: string }): { label: string; url: string; note?: string }[] {
+  const q = encodeURIComponent(`${p.name} ${p.city || p.address}`.trim());
+  switch (platform) {
+    case "google":
+      return p.placeId === "new"
+        ? []
+        : [{ label: "Edit right from Google Search", url: `https://www.google.com/search?q=${q}`, note: "Signed in with the Google account that manages the business, your profile's edit buttons show up right in the search results." }];
+    case "apple":
+      return [{ label: "See if Apple Maps already has you", url: `https://maps.apple.com/?q=${q}`, note: "If you're there, claim that place instead of adding a new one, so you don't end up with two." }];
+    case "yelp":
+      return [{ label: "See if Yelp already has you", url: `https://www.yelp.com/search?find_desc=${encodeURIComponent(p.name)}&find_loc=${encodeURIComponent(p.city || p.address)}`, note: "If a page exists, open it and tap \"Claim this business\" instead of making a new one." }];
+    case "facebook":
+      return [{ label: "Check for an existing Page", url: `https://www.facebook.com/search/pages/?q=${encodeURIComponent(p.name)}`, note: "Facebook sometimes makes an unofficial Page for a business. If there is one, claim it." }];
+    default:
+      return [];
+  }
 }
 
 export const GUIDES: PlatformGuide[] = [
@@ -53,7 +75,7 @@ export const GUIDES: PlatformGuide[] = [
     url: "https://www.bing.com/forbusiness",
     minutes: 5,
     steps: [
-      "Sign in and choose 'Import from Google Business Profile' (fastest), or add it manually.",
+      "Sign in and choose 'Import from Google Business Profile'. It copies your name, address, hours, photos and categories in one go. Or add it manually.",
       "Check the name, address and phone match the details below exactly.",
       "Paste the short description and submit for verification.",
     ],
@@ -81,10 +103,10 @@ export const GUIDES: PlatformGuide[] = [
     minutes: 10,
     steps: [
       "Create a Page with your business name and category.",
-      "Paste the short description as your bio, then add your address, phone, website and hours.",
+      "Paste the bio below (Facebook allows 101 characters), then add your address, phone, website and hours. Put the longer description in the About section.",
       "Add a profile photo (your logo) and a cover photo of your work or storefront.",
     ],
-    fields: ["name", "category", "address", "phone", "website", "short"],
+    fields: ["name", "category", "address", "phone", "website", "bio", "short"],
   },
   {
     platform: "chatgpt",
