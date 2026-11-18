@@ -433,7 +433,7 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
           <CopyButton text={env.siteUrl + sharePath} label="Copy link to this check" />
         </div>
       </section>
-      <p className="mt-6 text-[0.85rem] text-ink-3">AI answers change from day to day, so a single check is a snapshot. We refresh them daily.</p>
+      <p className="mt-6 text-[0.85rem] text-ink-3">AI answers change from day to day, so a single check is a snapshot. We refresh them every few days.</p>
     </>
   );
 }
