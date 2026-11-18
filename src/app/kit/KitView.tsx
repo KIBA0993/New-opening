@@ -6,6 +6,7 @@ import { CopyBlock, CopyButton } from "@/components/CopyButton";
 import { DemoTag } from "@/components/ui";
 import { BuyButton } from "@/components/BuyButton";
 import type { Directory } from "@/lib/directories";
+import { doneCount, isDone, MANUAL_STEPS, STEP_IDS, type KitProgress, type StepCheck, type StepId } from "@/lib/kitSteps";
 import type { PlatformGuide } from "@/lib/platforms";
 import type { LaunchKit, OwnerProfile } from "@/lib/types";
 
@@ -30,39 +31,70 @@ interface Props {
   schema: string;
   robots: string;
   autopilot: AutopilotState;
+  initialProgress: KitProgress;
 }
 
-const STEP_IDS = ["details", "facts", "google", "verify", "apple", "bing", "yelp", "facebook", "chatgpt", "directories", "website", "reviews"] as const;
-type StepId = (typeof STEP_IDS)[number];
-
-export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot }: Props) {
-  const [done, setDone] = useState<Record<string, boolean>>({});
+export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey, industryName, directories, schema, robots, autopilot, initialProgress }: Props) {
+  const [progress, setProgress] = useState<KitProgress>(initialProgress);
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState("");
   const [qr, setQr] = useState("");
   const key = `od_kit_${storeKey.slice(-24)}`;
+  const done = useMemo(() => Object.fromEntries(STEP_IDS.map((id) => [id, isDone(progress, id)])) as Record<StepId, boolean>, [progress]);
+
+  async function save(body: Record<string, unknown>): Promise<KitProgress | null> {
+    const res = await fetch("/api/kit/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: storeKey, ...body }) }).catch(() => null);
+    const data = res ? ((await res.json().catch(() => ({}))) as { progress?: KitProgress; error?: string }) : { error: "No connection. Please try again." };
+    if (data.progress) setProgress(data.progress);
+    if (res?.ok === false || !res) setCheckMsg(data.error || "Something went wrong. Please try again.");
+    return data.progress || null;
+  }
+
+  async function runCheck() {
+    setChecking(true);
+    setCheckMsg("");
+    const p = await save({ action: "check" });
+    setChecking(false);
+    if (p?.check) {
+      const confirmed = STEP_IDS.filter((id) => p.check!.steps[id]?.state === "done").length;
+      setCheckMsg(confirmed ? `We confirmed ${confirmed} step${confirmed === 1 ? "" : "s"} from your live listings and website.` : "Nothing confirmed yet. Changes on Google and other sites can take a few days to show.");
+    }
+  }
 
   useEffect(() => {
+    // Ticks saved in this browser before progress moved to the account: move them over once.
+    let local: Record<string, boolean> = {};
     try {
-      setDone(JSON.parse(localStorage.getItem(key) || "{}"));
+      local = JSON.parse(localStorage.getItem(key) || "{}");
     } catch {
       /* ignore */
     }
-  }, [key]);
+    if (Object.values(local).some(Boolean) && !Object.keys(initialProgress.manual).length) {
+      save({ action: "import", manual: local }).then(() => {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+    // First visit: check what's already done, so owners don't redo steps.
+    if (!initialProgress.check) runCheck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     QRCode.toDataURL(reviewUrl, { width: 640, margin: 1, color: { dark: "#1c1a16", light: "#ffffff" } }).then(setQr).catch(() => setQr(""));
   }, [reviewUrl]);
 
   function toggle(id: StepId) {
-    const next = { ...done, [id]: !done[id] };
-    setDone(next);
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+    const next = !done[id];
+    setProgress((p) => ({ ...p, manual: { ...p.manual, [id]: next } }));
+    save({ action: "tick", step: id, done: next });
   }
 
-  const count = STEP_IDS.filter((s) => done[s]).length;
+  const count = doneCount(progress);
+  const checks = progress.check?.steps || {};
   const isNew = profile.placeId === "new";
   const claimFirst = profile.managesProfile === "no" || profile.managesProfile === "unsure";
   const fill = (s: string) => (reviewUrl.includes("YOUR_PLACE_ID") ? s : s.replaceAll("[REVIEW LINK]", reviewUrl));
@@ -93,17 +125,27 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
         </p>
         <div className="sticky top-0 z-10 -mx-4 mt-6 border-b border-line bg-paper/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:px-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="font-semibold" aria-live="polite">
+            <p className="font-semibold whitespace-nowrap" aria-live="polite">
               {count} of {STEP_IDS.length} steps done
             </p>
-            <DemoTag show={kit.demo} />
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:block"><DemoTag show={kit.demo} /></span>
+              <button type="button" onClick={runCheck} disabled={checking} className="btn btn-ghost !min-h-[40px] whitespace-nowrap !px-4 !py-1 text-[0.9rem]">
+                {checking ? "Checking…" : "Check my progress"}
+              </button>
+            </div>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper-3" aria-hidden>
             <div className="h-full bg-good transition-all" style={{ width: `${(count / STEP_IDS.length) * 100}%` }} />
           </div>
+          <p className={`mt-1.5 text-[0.85rem] text-ink-3 ${checkMsg || checking ? "" : "hidden sm:block"}`} aria-live="polite">
+            {checking
+              ? "Looking at your Google profile, Yelp, directories and website…"
+              : checkMsg || (progress.check ? `Last checked ${new Date(progress.check.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}. We look at your Google profile, Yelp, directories and website.` : "We look at your Google profile, Yelp, directories and website, and tick what's done.")}
+          </p>
         </div>
 
-        <Step n={1} id="details" title="Your details, the same everywhere" done={done.details} onToggle={toggle}
+        <Step n={1} id="details" title="Your details, the same everywhere" done={done.details} check={checks.details} onToggle={toggle}
           intro="AI tools trust businesses whose name, address and phone match on every site. Use these exact details everywhere.">
           <div className="grid gap-3">
             {(["name", "address", "phone", "website"] as const).map((f) => (
@@ -112,7 +154,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={2} id="facts" title="Your proof: credentials, facts and prices" done={done.facts} onToggle={toggle}
+        <Step n={2} id="facts" title="Your proof: credentials, facts and prices" done={done.facts} check={checks.facts} onToggle={toggle}
           intro="AI assistants recommend the business that proves it does the exact job, with specifics like licenses, areas and prices. Fill in the [brackets], then use the same facts on every listing and on your website.">
           <div className="grid gap-3">
             {kit.facts?.length ? <CopyBlock label="Fact sheet" text={kit.facts.join("\n")} hint="Fill in every [bracket]. Never claim a license or number you don't have." /> : null}
@@ -123,7 +165,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={3} id="google" title={isNew ? "Create your Google profile" : claimFirst ? "Claim your Google profile, then fill it in" : "Fill in your Google profile"} done={done.google} onToggle={toggle}
+        <Step n={3} id="google" title={isNew ? "Create your Google profile" : claimFirst ? "Claim your Google profile, then fill it in" : "Fill in your Google profile"} done={done.google} check={checks.google} onToggle={toggle}
           intro={guides[0].why}>
           {claimFirst && !isNew ? (
             <div className="mb-5 rounded-xl bg-warn-bg p-4 text-warn">
@@ -192,13 +234,13 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={4} id="verify" title="Pass Google's verification" done={done.verify} onToggle={toggle}
+        <Step n={4} id="verify" title="Pass Google's verification" done={done.verify} check={checks.verify} onToggle={toggle}
           intro="Google decides how to verify you: a video, a phone or text code, an email, or a postcard. Video is the most common now and the one people fail most.">
           <VerificationCoach serviceArea={serviceArea} industryName={industryName} />
         </Step>
 
         {guides.slice(1).map((g, i) => (
-          <Step key={g.platform} n={5 + i} id={g.platform as StepId} title={`Get on ${g.name}`} done={done[g.platform]} onToggle={toggle} intro={g.why}>
+          <Step key={g.platform} n={5 + i} id={g.platform as StepId} title={`Get on ${g.name}`} done={done[g.platform as StepId]} check={checks[g.platform as StepId]} onToggle={toggle} intro={g.why}>
             <Guide guide={g} />
             <div className="mt-5 grid gap-3">
               {g.fields.map((f) => (
@@ -214,7 +256,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </Step>
         ))}
 
-        <Step n={5 + guides.length - 1} id="directories" title={`Get on your industry's directories`} done={done.directories} onToggle={toggle}
+        <Step n={5 + guides.length - 1} id="directories" title={`Get on your industry's directories`} done={done.directories} check={checks.directories} onToggle={toggle}
           intro={`ChatGPT cites directories and "best of" lists in most local answers. These are the ones that matter for ${industryName.toLowerCase()}. Use the same details and fact sheet on each.`}>
           <ul className="grid gap-3">
             {directories.map((d) => (
@@ -233,7 +275,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={6 + guides.length - 1} id="website" title="Make your website easy for AI to quote" done={done.website} onToggle={toggle}
+        <Step n={6 + guides.length - 1} id="website" title="Make your website easy for AI to quote" done={done.website} check={checks.website} onToggle={toggle}
           intro="Gemini and Perplexity cite business websites in about 9 of 10 local answers. A page per service is what wins specific questions, even against bigger rivals. Send this step to whoever runs your site, or paste it into your site builder.">
           <div className="grid gap-3">
             {kit.servicePages?.length ? (
@@ -263,7 +305,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
           </div>
         </Step>
 
-        <Step n={7 + guides.length - 1} id="reviews" title="Get your first 10 reviews" done={done.reviews} onToggle={toggle}
+        <Step n={7 + guides.length - 1} id="reviews" title="Get your first 10 reviews" done={done.reviews} check={checks.reviews} onToggle={toggle}
           intro="New businesses with a handful of recent reviews start showing up fast. Ask every happy customer, right after the visit, and ask them to mention the service and their neighborhood: AI picks the business whose reviews prove it does the exact job.">
           {reviewUrl.includes("YOUR_PLACE_ID") ? (
             <p className="mb-3 rounded-xl bg-warn-bg p-4 text-warn">
@@ -277,10 +319,10 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qr} alt={`QR code that opens the Google review page for ${profile.name}`} className="h-40 w-40" />
               <div>
-                <p className="font-semibold">QR code for your counter, mirror or truck window</p>
-                <p className="text-ink-2">Print the card, or save the image for flyers and receipts.</p>
+                <p className="font-semibold">Printable review signs</p>
+                <p className="text-ink-2">A counter or wall sign, a table tent you fold in half, and a sheet of 10 cards for receipts, bags or your truck window. All with your QR code.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => window.print()} className="btn btn-primary !min-h-[44px]">Print a review card</button>
+                  <a href={`/api/kit/signs?key=${encodeURIComponent(storeKey)}`} className="btn btn-primary !min-h-[44px]">Download signs (PDF)</a>
                   <a href={qr} download={`${profile.name.replace(/\W+/g, "-")}-review-qr.png`} className="btn btn-ghost !min-h-[44px]">Save QR image</a>
                 </div>
               </div>
@@ -313,7 +355,7 @@ export function KitView({ kit, profile, guides, reviewUrl, serviceArea, storeKey
   );
 }
 
-function Step({ n, id, title, intro, done, onToggle, children }: { n: number; id: StepId; title: string; intro?: string; done?: boolean; onToggle: (id: StepId) => void; children: React.ReactNode }) {
+function Step({ n, id, title, intro, done, check, onToggle, children }: { n: number; id: StepId; title: string; intro?: string; done?: boolean; check?: StepCheck; onToggle: (id: StepId) => void; children: React.ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="mt-12 scroll-mt-28">
       <div className="flex items-start gap-4">
@@ -326,6 +368,7 @@ function Step({ n, id, title, intro, done, onToggle, children }: { n: number; id
         </div>
       </div>
       <div className="mt-5 sm:pl-14">
+        <CheckResult id={id} check={check} />
         {done ? <p className="text-ink-3">Done. Uncheck the box to see this step again.</p> : children}
         <label className="mt-5 flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-paper-2 px-4 font-semibold">
           <input type="checkbox" className="h-5 w-5 accent-[#2f6b45]" checked={!!done} onChange={() => onToggle(id)} />
@@ -333,6 +376,28 @@ function Step({ n, id, title, intro, done, onToggle, children }: { n: number; id
         </label>
       </div>
     </section>
+  );
+}
+
+/** What "Check my progress" saw for this step. */
+function CheckResult({ id, check }: { id: StepId; check?: StepCheck }) {
+  if (MANUAL_STEPS.includes(id)) {
+    return <p className="mb-4 text-[0.9rem] text-ink-3">We can&apos;t see this platform from outside, so tick the box when you&apos;re done.</p>;
+  }
+  if (!check || (!check.found.length && !check.missing.length)) return null;
+  const ok = check.state === "done";
+  return (
+    <div className={`mb-4 rounded-xl p-3 text-[0.95rem] ${ok ? "bg-good-bg text-good" : "bg-paper-3 text-ink-2"}`}>
+      <p className="font-semibold">{ok ? "Confirmed by our check" : "What our check found"}</p>
+      <ul className="mt-1 space-y-0.5">
+        {check.found.map((x) => (
+          <li key={x}>✓ {x}</li>
+        ))}
+        {check.missing.map((x) => (
+          <li key={x} className={ok ? "" : "text-warn"}>○ {x}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

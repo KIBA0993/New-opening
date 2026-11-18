@@ -5,6 +5,7 @@ import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
 import { firstEmailJustSent, trialNotice } from "@/lib/welcome";
 import { alertOwner } from "@/lib/alert";
+import { kitBlock, applyKitPost } from "@/lib/kitDigest";
 
 export const maxDuration = 300;
 
@@ -27,7 +28,10 @@ export async function GET(req: Request) {
     try {
       const { digest, next } = await composeDigest(profile, unpackSnapshot(sub.metadata.snap));
       const checkout = (await stripe().checkout.sessions.list({ subscription: sub.id, limit: 1 })).data[0];
+      const kit = await kitBlock(checkout, profile, { check: true }).catch(() => null);
+      await applyKitPost(digest, kit, checkout?.id, profile);
       const html = renderDigestHtml(digest, {
+        kitProgress: kit,
         report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
         account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
         trial: trialNotice(sub, checkout?.id),

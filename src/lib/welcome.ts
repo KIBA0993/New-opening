@@ -5,6 +5,7 @@ import { composeDigest, packSnapshot } from "./digest";
 import { env } from "./env";
 import { alertOwner, errText } from "./alert";
 import { renderDigestHtml, sendEmail } from "./email";
+import { kitBlock, applyKitPost } from "./kitDigest";
 
 // The first Autopilot email goes out right after purchase. The thank-you page triggers it,
 // and an hourly job catches anyone who closed the tab before reaching that page.
@@ -24,9 +25,13 @@ export async function sendFirstEmail(subId: string, sessionId?: string): Promise
 
   await stripe().subscriptions.update(subId, { metadata: { w1: String(Date.now()) } });
   try {
-    const sid = sessionId || (await stripe().checkout.sessions.list({ subscription: subId, limit: 1 })).data[0]?.id;
+    const checkout = sessionId ? await stripe().checkout.sessions.retrieve(sessionId).catch(() => undefined) : (await stripe().checkout.sessions.list({ subscription: subId, limit: 1 })).data[0];
+    const sid = sessionId || checkout?.id;
     const { digest, next } = await composeDigest(profile, null);
+    const kit = await kitBlock(checkout, profile, { check: false }).catch(() => null);
+    await applyKitPost(digest, kit, checkout?.id, profile);
     const html = renderDigestHtml(digest, {
+      kitProgress: kit,
       report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
       account: sid ? `${env.siteUrl}/autopilot/account?session_id=${sid}` : undefined,
       trial: trialNotice(sub, sid),

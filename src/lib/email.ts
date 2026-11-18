@@ -1,6 +1,7 @@
 import "server-only";
 import { env, has } from "./env";
 import { ENGINE_LABEL } from "./providers/ai";
+import type { KitBlock } from "./kitDigest";
 import type { WeeklyDigest } from "./types";
 
 export async function sendEmail(to: string, subject: string, html: string) {
@@ -41,7 +42,17 @@ const p = (t: string) => `<p style="font:16px/1.55 -apple-system,Segoe UI,Helvet
 const box = (t: string) =>
   `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:8px 0 12px;font:15px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap">${esc(t)}</div>`;
 
-export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string; trial?: { renews: string; price: string; cancelUrl: string } } = {}) {
+export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?: string; account?: string; trial?: { renews: string; price: string; cancelUrl: string }; kitProgress?: KitBlock | null } = {}) {
+  const k = links.kitProgress;
+  const kitBox = k
+    ? `<div style="background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:14px 16px;margin:16px 0">
+<p style="font:600 16px/1.4 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 8px">Your Launch Kit: ${k.done} of ${k.total} steps done</p>
+<div style="height:8px;background:#E8E0D2;border-radius:8px;overflow:hidden;margin:0 0 10px"><div style="height:8px;width:${Math.round((k.done / k.total) * 100)}%;background:#2F6B45"></div></div>
+${k.next ? `<p style="font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 10px">Next up: <b>${esc(k.next)}</b>. Most steps take 10 to 20 minutes.</p>` : `<p style="font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 10px">Every step is done. Nice work. Now keep posting and asking for reviews.</p>`}
+<a href="${k.url}" style="display:inline-block;background:#1C1A16;color:#F4EFE6;padding:10px 16px;border-radius:999px;text-decoration:none;font:600 14px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif">${k.next ? "Do the next step" : "Open your Kit"}</a>
+<p style="font:13px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#6B6459;margin:10px 0 0">We re-check your Google profile, Yelp, directories and website each week and tick what's done.</p>
+</div>`
+    : "";
   const named = d.visibility.filter((v) => v.mentionsYou).length;
   const vis = d.visibility
     .map((v) => `${v.mentionsYou ? "🟢" : "🔴"} <b>${ENGINE_LABEL[v.engine]}</b> ${v.mentionsYou ? "named you" : "didn't name you"}`)
@@ -56,12 +67,13 @@ export function renderDigestHtml(d: WeeklyDigest, links: { kit?: string; report?
 <h1 style="font:600 28px/1.2 Georgia,serif;margin:12px 0 6px">${esc(d.business)}: your week of ${esc(d.weekOf)}</h1>
 ${p(`Five minutes, five things. Everything is written for you. Copy, paste, done.`)}
 ${links.trial ? `<p style="font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 0 12px;background:#FBF8F2;border:1px solid #DDD3C2;border-radius:10px;padding:10px 14px">This is your free week of the Autopilot, included with your Launch Kit. It renews on <b>${esc(links.trial.renews)}</b> at <b>${esc(links.trial.price)}</b> until you cancel. <a href="${links.trial.cancelUrl}" style="color:#B4441A">Cancel in one click</a>.</p>` : ""}
+${kitBox}
 ${h2(`1. Are AI tools recommending you? ${named} of ${d.visibility.length}`)}
 ${p(vis)}
 ${links.account ? p(`Changed something? <a href="${links.account}" style="color:#B4441A">Run a fresh check now</a> with one of your monthly re-checks.`) : ""}
 ${h2("2. What your rivals did")}
 ${moves}
-${h2("3. Your Google post for this week")}
+${h2(k && k.week <= 4 ? `3. Your Google post for this week (week ${k.week} of your Kit)` : "3. Your Google post for this week")}
 ${box(d.googlePost)}
 ${p(`Paste it at <a href="https://business.google.com" style="color:#B4441A">business.google.com</a> → Add update.`)}
 ${h2("4. Reviews to answer")}
