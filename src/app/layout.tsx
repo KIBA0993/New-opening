@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/site";
 
@@ -19,9 +18,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#f4efe6", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const tracker = process.env.NEXT_PUBLIC_TRACKER_SRC; // the hackathon's required traffic tracker
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <head>
+        {/* Ship or Die hackathon traffic verification (must load in <head> on every page) */}
+        <script defer src="https://www.ship-or-die.com/hackathon/verify.js" data-site="6cfadd6dc3f0d573003e898e85f34bb145ebba4e"></script>
+      </head>
       <body className="min-h-dvh antialiased flex flex-col">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 btn btn-primary">
           Skip to content
@@ -31,7 +33,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
         </main>
         <SiteFooter />
-        {tracker ? <Script src={tracker} strategy="afterInteractive" data-site={process.env.NEXT_PUBLIC_TRACKER_SITE} /> : null}
       </body>
     </html>
   );
