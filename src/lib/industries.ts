@@ -52,6 +52,8 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "I work from home. Will my address show up?", a: "No. We set you up as a service-area business, so customers see the towns you serve, not your house." },
       { q: "Do I need a website?", a: "Not to get on Google Maps. A good Google profile is enough to start. A simple site with a page per service helps AI assistants recommend you, and your kit writes those pages." },
+      { q: "Can I use a P.O. box or virtual office as my address?", a: "No. Google suspends profiles that use P.O. boxes, UPS boxes or virtual offices. Verify with your real base address and keep it hidden." },
+      { q: "Should I show my license and insurance?", a: "Yes, on your website, Yelp and Google description. AI assistants answer 'licensed and insured plumber near me' with businesses that state it plainly." },
     ],
   },
   {
@@ -85,6 +87,7 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "I rent a suite inside a bigger salon. Can I have my own Google profile?", a: "Yes, if you have your own business name and serve clients there during your hours. We walk you through it." },
       { q: "Does this replace my booking app?", a: "No. We add your booking link to every profile, so more people find it." },
+      { q: "Should I ask for Google reviews or booking app reviews?", a: "Google first. Google reviews show on Maps and in Google's AI answers. Booking app reviews only help inside that app." },
     ],
   },
   {
@@ -118,6 +121,7 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "My truck moves around. Can I still be on Google?", a: "Yes. You list the area you serve, and post where you'll be each week." },
       { q: "Do you book events for me?", a: "No, you stay in charge. We find them and write the pitch, and you send it." },
+      { q: "Is Yelp worth it for a food truck?", a: "Yes. A free Yelp page is one of the sources ChatGPT reads most for food recommendations. Keep the name and phone identical to Google." },
     ],
   },
   {
@@ -151,6 +155,7 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "I'm mobile. Do I need a shop address?", a: "No. We set you up as a service-area business that lists the neighborhoods you cover." },
       { q: "Can I ask for reviews?", a: "On Google, yes. We give you a link and QR code. On Yelp, asking is against their rules, so we don't." },
+      { q: "Which Google category should a groomer pick?", a: "'Pet groomer' as the primary category. Add others only for services you really offer, like 'Pet boarding service'." },
     ],
   },
   {
@@ -184,6 +189,7 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "Is this OK for medical practices?", a: "Yes. We never ask for or store patient information. Review requests are general, never about treatment." },
       { q: "Do you replace my booking system?", a: "No. We link to it from every profile." },
+      { q: "How should I reply to reviews from patients?", a: "Thank them warmly, but never confirm they're a patient or mention a condition or treatment, even if they did." },
     ],
   },
   {
@@ -217,6 +223,7 @@ export const INDUSTRIES: Industry[] = [
     faqs: [
       { q: "Can you update my menu on Google for me?", a: "You stay in control of your profile. We write it, and you paste it in with one tap." },
       { q: "We already use Toast or Square.", a: "Great, keep them. We focus on being found on Google, Apple Maps, Yelp and ChatGPT." },
+      { q: "How do I add my menu to Google?", a: "Edit your profile's menu section or add a menu link, and upload a clear photo of the menu. Keep prices the same as on your website, Yelp and delivery apps." },
     ],
   },
 ];
