@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BuyButton } from "@/components/BuyButton";
 import { CopyButton } from "@/components/CopyButton";
+import { TrackOnce } from "@/components/TrackOnce";
 import { DemoTag, Pill } from "@/components/ui";
 import type { Light } from "@/components/ui";
 import { env, PRICES } from "@/lib/env";
@@ -231,6 +232,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
 
   return (
     <>
+      <TrackOnce name="check_finished" data={{ industry, named: s.named, total: s.total }} />
       <section id="answers" aria-labelledby="ai" className="mt-12 scroll-mt-6">
         <div className="flex flex-wrap items-center gap-2">
           <Pill light={s.light}>{s.named} of {s.total} answers name you</Pill>
@@ -265,10 +267,10 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
 
       <section aria-labelledby="rivals" className="mt-12">
         <h2 id="rivals" className="font-display text-[1.7rem]">You vs. nearby rivals</h2>
-        <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {ind.term}s within a few miles.</p>
+        <p className="mt-1 text-ink-2">The {report.rivals.length} strongest {ind.term}s within a few miles. A listing marked &ldquo;?&rdquo; means we couldn&apos;t check it.</p>
         <ul className="mt-5 space-y-3">
           <RivalRow name={`${place.name} (you)`} you rating={place.rating} reviews={place.reviewCount || 0} ai={s.named} total={s.total}
-            profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "found" || l.state === "different"]))} />
+            profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "unknown" ? null : l.state === "found" || l.state === "different"]))} />
           {report.rivals.map((r) => (
             <RivalRow key={r.id} name={r.name} rating={r.rating} reviews={r.reviewCount || 0} ai={r.aiMentions} total={s.total} miles={r.distanceMiles} profiles={r.profiles || {}} />
           ))}
@@ -346,7 +348,7 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
             Weekly Autopilot · {PRICES.monthly.label}/mo
           </BuyButton>
         </div>
-        <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment for the kit. Secure checkout by Stripe.</p>
+        <p className="mt-3 text-[0.9rem] text-[#bdb4a5]">{kit.leftAtPrice != null ? `${launchNote(kit)} ` : ""}One-time payment for the kit. 14-day money-back promise. Secure checkout by Stripe.</p>
       </section>
       <section className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-ink-2">Share this check with a partner or friend.</p>
@@ -359,7 +361,7 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
 
 const PLATS: Platform[] = ["google", "apple", "bing", "yelp", "facebook"];
 
-function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean>> }) {
+function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean | null>> }) {
   return (
     <li className={`card p-4 ${you ? "border-ink outline outline-1 outline-ink" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -373,9 +375,10 @@ function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { 
       </dl>
       <p className="mt-2 flex flex-wrap gap-1.5 text-[0.8rem]">
         {PLATS.map((p) => (
-          <span key={p} className={`rounded-full px-2 py-0.5 ${profiles[p] ? "bg-good-bg text-good" : "bg-paper-3 text-ink-3 line-through"}`}>
-            <span className="sr-only">{profiles[p] ? "Has" : "No"} </span>
-            {PLATFORM_LABEL[p]}
+          <span key={p} title={profiles[p] == null ? "Couldn't check" : undefined}
+            className={`rounded-full px-2 py-0.5 ${profiles[p] ? "bg-good-bg text-good" : profiles[p] === false ? "bg-paper-3 text-ink-3 line-through" : "border border-dashed border-ink-3/40 text-ink-3"}`}>
+            <span className="sr-only">{profiles[p] ? "Has" : profiles[p] === false ? "No" : "Couldn't check"} </span>
+            {PLATFORM_LABEL[p]}{profiles[p] == null ? " ?" : ""}
           </span>
         ))}
       </p>

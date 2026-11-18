@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/site";
 
@@ -8,9 +9,9 @@ const body = Instrument_Sans({ variable: "--font-body", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: { default: "MapDebut: get your new business found on Google, Maps and ChatGPT", template: "%s · MapDebut" },
+  title: { default: "MapDebut: get your new business found on Google, Maps and AI assistants", template: "%s · MapDebut" },
   description:
-    "Free check: see if Google, Maps and ChatGPT recommend your new local business, and who they pick instead. Then set up every profile in one afternoon.",
+    "Free check: see if Google, Maps and AI assistants recommend your new local business, and who they pick instead. Then set up every profile in one afternoon.",
   openGraph: { type: "website", siteName: "MapDebut" },
   twitter: { card: "summary_large_image" },
 };
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
         </main>
         <SiteFooter />
+        <Analytics />
       </body>
     </html>
   );

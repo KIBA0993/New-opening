@@ -1,4 +1,5 @@
 import "server-only";
+import { nearBias, type LatLng } from "../geo";
 import { env, has } from "../env";
 import { spend } from "../guard";
 import { mockPlace, mockRivals, mockSearch } from "../mock";
@@ -122,7 +123,7 @@ async function findByPhoneLegacy(q: string): Promise<Place[] | null> {
   return places.filter(Boolean) as Place[];
 }
 
-export async function searchBusinesses(q: string): Promise<{ places: Place[]; demo: boolean }> {
+export async function searchBusinesses(q: string, near: LatLng | null = null): Promise<{ places: Place[]; demo: boolean }> {
   if (!has.places()) return { places: mockSearch(q), demo: true };
 
   if (looksLikePhone(q)) {
@@ -143,19 +144,19 @@ export async function searchBusinesses(q: string): Promise<{ places: Place[]; de
 
   const data = await gpost<{ places?: GPlace[] }>(
     "places:searchText",
-    { textQuery: q, pageSize: 6 },
+    { textQuery: q, pageSize: 6, ...nearBias(near) },
     FIELDS.map((f) => `places.${f}`).join(","),
   );
   return { places: (data.places || []).map(toPlace), demo: false };
 }
 
-export async function autocomplete(input: string, sessionToken: string) {
+export async function autocomplete(input: string, sessionToken: string, near: LatLng | null = null) {
   if (!has.places()) {
     return mockSearch(input).slice(0, 1).map((p) => ({ placeId: p.id, main: p.name, secondary: p.address }));
   }
   const data = await gpost<{
     suggestions?: { placePrediction?: { placeId: string; structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } } } }[];
-  }>("places:autocomplete", { input, sessionToken, includedRegionCodes: ["us"] }, "*");
+  }>("places:autocomplete", { input, sessionToken, includedRegionCodes: ["us"], ...nearBias(near), ...(near ? { origin: near } : {}) }, "*");
   return (data.suggestions || [])
     .map((s) => s.placePrediction)
     .filter(Boolean)

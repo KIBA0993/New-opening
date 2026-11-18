@@ -37,7 +37,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ indus
         <SampleAnswer industry={ind.slug} />
       </section>
 
-      <Section eyebrow="Sound familiar?" title="What new owners tell us" className="mt-20">
+      <Section eyebrow="Sound familiar?" title="What new owners run into" className="mt-20">
         <div className="mt-8 grid gap-5 sm:grid-cols-3">
           {ind.pains.map((p) => (
             <div key={p.title} className="border-t-2 border-ink pt-4">

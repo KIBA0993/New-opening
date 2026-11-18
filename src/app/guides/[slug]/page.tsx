@@ -91,7 +91,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       ))}
 
       <aside className="mt-12 rounded-3xl bg-ink p-6 text-paper sm:p-8">
-        <h2 className="font-display text-[1.6rem] leading-tight">See who ChatGPT recommends near you</h2>
+        <h2 className="font-display text-[1.6rem] leading-tight">See who AI assistants recommend near you</h2>
         <p className="mt-2 text-[#d9d1c3]">Free check: we ask AI assistants the questions your customers ask, and show you what to fix.</p>
         <div className="mt-5 [&_.field]:text-ink [&_p]:text-[#bdb4a5]">
           <SearchBox size="md" industry={g.industry} />

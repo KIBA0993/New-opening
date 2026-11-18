@@ -38,7 +38,7 @@ export default function Home() {
         <div>
           <p className="eyebrow">For businesses that just opened</p>
           <h1 className="font-display mt-3 text-[2.5rem] leading-[1.05] sm:text-[3.6rem]">
-            Your new business, found on Google, Maps and ChatGPT this week.
+            Your new business, found on Google, Maps and AI assistants this week.
           </h1>
           <p className="mt-5 max-w-xl text-[1.15rem] text-ink-2">
             See who AI recommends instead of you, for free. Then set up every profile in one afternoon, with everything written for you.
@@ -78,8 +78,8 @@ export default function Home() {
 
       <Section className="mt-24">
         <div className="rounded-3xl bg-ink px-6 py-10 text-paper sm:px-10 sm:py-14">
-          <h2 className="font-display text-[2rem] leading-tight sm:text-[2.6rem]">Find out who ChatGPT recommends instead of you.</h2>
-          <p className="mt-3 max-w-xl text-[#d9d1c3]">Free, one minute, no sign-up.</p>
+          <h2 className="font-display text-[2rem] leading-tight sm:text-[2.6rem]">Find out who AI assistants recommend instead of you.</h2>
+          <p className="mt-3 max-w-xl text-[#d9d1c3]">Free, one minute, no card needed.</p>
           <div className="mt-6 max-w-xl [&_.field]:text-ink [&_p]:text-[#bdb4a5]">
             <SearchBox size="md" />
           </div>

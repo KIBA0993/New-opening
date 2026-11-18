@@ -72,7 +72,7 @@ export type Platform =
 export interface Rival extends Place {
   distanceMiles?: number;
   aiMentions: number; // how many AI answers named this rival
-  profiles?: Partial<Record<Platform, boolean>>;
+  profiles?: Partial<Record<Platform, boolean | null>>; // null = couldn't check
 }
 
 export interface Report {

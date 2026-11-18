@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { track } from "@vercel/analytics/server";
 import { z } from "zod";
 import { allowIp } from "@/lib/guard";
 import { createCheckout } from "@/lib/billing";
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Some details are missing. Please go back and check them." }, { status: 400 });
   try {
     const url = await createCheckout(parsed.data.product, parsed.data.profile);
+    await track("checkout", { product: parsed.data.product, industry: parsed.data.profile.industry }).catch(() => undefined);
     return NextResponse.json({ url });
   } catch (e) {
     console.error(e);

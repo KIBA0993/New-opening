@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "@/lib/site";
 import Link from "next/link";
 import { INDUSTRIES } from "@/lib/industries";
 
@@ -34,7 +35,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6 text-[0.95rem]">
         <div>
           <Wordmark />
-          <p className="mt-2 max-w-xs text-ink-3">The launch kit for new local businesses. Get found on Google, Maps and ChatGPT, then stay found.</p>
+          <p className="mt-2 max-w-xs text-ink-3">The launch kit for new local businesses. Get found on Google, Maps and AI assistants, then stay found.</p>
         </div>
         <div>
           <p className="font-semibold">Made for</p>
@@ -55,6 +56,7 @@ export function SiteFooter() {
             <li><Link className="text-ink-2 hover:text-ink" href="/guides">Guides</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/me">Sign in</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/account">Manage subscription</Link></li>
+            <li><a className="text-ink-2 hover:text-ink" href={`mailto:${CONTACT_EMAIL}`}>Contact: {CONTACT_EMAIL}</a></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/privacy">Privacy</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/terms">Terms</Link></li>
           </ul>

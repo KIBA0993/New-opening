@@ -34,7 +34,7 @@ export default function Page() {
         </dl>
       </section>
       <p className="mt-10 text-ink-2">
-        Just opened? Reviews are step one. <Link href="/tools/chatgpt-visibility-checker" className="link">Check if ChatGPT recommends your business</Link>, free.
+        Just opened? Reviews are step one. <Link href="/tools/chatgpt-visibility-checker" className="link">Check if AI assistants recommend your business</Link>, free.
       </p>
     </div>
   );

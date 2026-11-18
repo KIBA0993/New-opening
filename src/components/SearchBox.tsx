@@ -1,4 +1,5 @@
 "use client";
+import { track } from "@vercel/analytics";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -50,6 +51,7 @@ export function SearchBox({ industry, autoFocus = false, size = "lg" }: { indust
   const ind = industry ? `&industry=${industry}` : "";
 
   function go(s?: Suggestion) {
+    if (s || q.trim().length >= 2) track("search", { picked: !!s });
     if (s) {
       router.push(`/start?place=${encodeURIComponent(s.placeId)}&token=${token.current}${ind}`);
     } else if (q.trim().length >= 2) {
@@ -124,7 +126,7 @@ export function SearchBox({ industry, autoFocus = false, size = "lg" }: { indust
           ))}
         </ul>
       ) : null}
-      <p className="mt-3 text-[0.9rem] text-ink-3">Free. No sign-up. Takes about a minute.</p>
+      <p className="mt-3 text-[0.9rem] text-ink-3">Free, no card needed. Takes about a minute, and we email you the results.</p>
     </form>
   );
 }

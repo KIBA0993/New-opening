@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL, REFUND_DAYS } from "@/lib/site";
 import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Terms" };
 export default function Terms() {
@@ -11,6 +12,10 @@ export default function Terms() {
       <p>Google, Apple, Yelp, Bing, Facebook and OpenAI decide who they show and recommend. We can't guarantee placement, verification or recommendations.</p>
       <h2>Subscriptions</h2>
       <p>The Autopilot renews monthly or yearly until you cancel. Cancel any time from the link in every email, and it stops at the end of the period you paid for.</p>
+      <h2>14-day money-back promise</h2>
+      <p>If MapDebut isn&apos;t right for you, email {CONTACT_EMAIL} within {REFUND_DAYS} days of paying and we&apos;ll refund that payment in full. This covers the Launch Kit and your first Autopilot payment.</p>
+      <h2>Contact</h2>
+      <p>Questions or problems: {CONTACT_EMAIL}.</p>
       <h2>Your content</h2>
       <p>Everything we write for you is yours to use. Please check it before you publish it.</p>
     </article>

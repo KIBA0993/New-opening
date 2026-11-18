@@ -170,7 +170,7 @@ Use found:null when you can't tell. Apple Maps listings are often not visible on
   return { listings: [google, ...rows, chatgpt], demo: false };
 }
 
-async function rivalProfiles(rivals: Place[], area: string): Promise<Record<string, Partial<Record<Platform, boolean>>>> {
+async function rivalProfiles(rivals: Place[], area: string): Promise<Record<string, Partial<Record<Platform, boolean | null>>>> {
   if (!rivals.length) return {};
   if (!has.webSearch()) {
     const r = seeded(rivals.map((x) => x.name).join());
@@ -183,7 +183,9 @@ Return JSON: {"<exact business name>": {"yelp": true|false|null, "apple": true|f
   return Object.fromEntries(
     rivals.map((r) => {
       const row = out[r.name] || {};
-      return [r.name, { google: true, yelp: !!row.yelp, apple: !!row.apple, bing: !!row.bing, facebook: !!row.facebook }];
+      // Keep "couldn't tell" as null so the page never shows a guess as a "No".
+      const v = (x: boolean | null | undefined) => (typeof x === "boolean" ? x : null);
+      return [r.name, { google: true, yelp: v(row.yelp), apple: v(row.apple), bing: v(row.bing), facebook: v(row.facebook) }];
     }),
   );
 }

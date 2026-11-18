@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
 import { paidSession, stripe } from "@/lib/billing";
-import { composeDigest, packSnapshot } from "@/lib/digest";
 import { env, has } from "@/lib/env";
-import { renderDigestHtml, sendEmail } from "@/lib/email";
+import { sendFirstEmail } from "@/lib/welcome";
 
 export const metadata: Metadata = { title: "Welcome to the Autopilot", robots: { index: false } };
 export const maxDuration = 120;
@@ -27,12 +26,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
       try {
         const s = await stripe().checkout.sessions.retrieve(session_id);
         const subId = typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
-        if (!subId) return;
-        const sub = await stripe().subscriptions.retrieve(subId);
-        if (sub.metadata.snap) return; // already sent
-        const { digest, next } = await composeDigest(paid.profile, null);
-        await sendEmail(paid.profile.email, `${digest.business}: your first 5-minute week`, renderDigestHtml(digest, { account: `${env.siteUrl}/autopilot/account?session_id=${session_id}` }));
-        await stripe().subscriptions.update(subId, { metadata: { snap: packSnapshot(next) } });
+        if (subId) await sendFirstEmail(subId, session_id);
       } catch (e) {
         console.error("welcome digest", e);
       }

@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL, REFUND_DAYS } from "@/lib/site";
 import Link from "next/link";
 import { PRICES } from "@/lib/env";
 import { kitPrice, launchNote } from "@/lib/pricing";
@@ -158,7 +159,7 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
           <Link href="/autopilot" className="btn btn-ghost mt-6 w-full">See a sample email</Link>
         </div>
       </div>
-      <p className="mt-4 text-[0.9rem] text-ink-3">Cancel the autopilot any time, in two clicks.</p>
+      <p className="mt-4 text-[0.9rem] text-ink-3">{REFUND_DAYS}-day money-back promise: not happy, email <a className="link" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> within {REFUND_DAYS} days of paying for a full refund. Cancel the autopilot any time, in two clicks.</p>
     </Section>
   );
 }
@@ -169,8 +170,12 @@ export const BASE_FAQ = [
     a: "You stay in control. Google, Yelp and the others require the owner to sign in and verify, so we write every field, link you to the right page, and walk you through it. Most owners finish in one afternoon.",
   },
   {
-    q: "Can you guarantee ChatGPT will recommend me?",
+    q: "Can you guarantee AI assistants will recommend me?",
     a: "No one can, and you should be wary of anyone who says so. What we can do is make sure every source AI tools read about you is complete and consistent, and show you each week whether it's working.",
+  },
+  {
+    q: "What if it's not for me?",
+    a: `Email ${CONTACT_EMAIL} within ${REFUND_DAYS} days of paying and we'll refund you in full, no questions asked. That covers the Launch Kit and your first Autopilot payment.`,
   },
   {
     q: "I haven't opened yet. Is it too early?",

@@ -3,6 +3,7 @@ import { composeDigest, packSnapshot, unpackSnapshot } from "@/lib/digest";
 import { metadataToProfile, stripe } from "@/lib/billing";
 import { env, has } from "@/lib/env";
 import { renderDigestHtml, sendEmail } from "@/lib/email";
+import { firstEmailJustSent } from "@/lib/welcome";
 
 export const maxDuration = 300;
 
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
     const customer = sub.customer as { email?: string | null };
     const to = profile?.email || customer?.email;
     if (!profile || !to) continue;
+    if (firstEmailJustSent(sub.metadata as Record<string, string>)) continue; // their first email went out in the last 3 days
     try {
       const { digest, next } = await composeDigest(profile, unpackSnapshot(sub.metadata.snap));
       const checkout = (await stripe().checkout.sessions.list({ subscription: sub.id, limit: 1 })).data[0];
@@ -27,7 +29,8 @@ export async function GET(req: Request) {
         report: `${env.siteUrl}/report/${encodeURIComponent(profile.placeId)}?industry=${profile.industry}`,
         account: checkout ? `${env.siteUrl}/autopilot/account?session_id=${checkout.id}` : undefined,
       });
-      await sendEmail(to, `${digest.business}: your 5-minute week`, html);
+      const res = await sendEmail(to, `${digest.business}: your 5-minute week`, html);
+      if (!res.ok) throw new Error("email not accepted");
       await stripe().subscriptions.update(sub.id, { metadata: { snap: packSnapshot(next) } });
       sent++;
     } catch (e) {
