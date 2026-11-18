@@ -21,7 +21,11 @@ export async function generateMetadata({ params }: { params: Promise<{ industry:
 export default async function IndustryPage({ params }: { params: Promise<{ industry: string }> }) {
   const ind = industryBySlug((await params).industry);
   if (!ind) notFound();
-  const guides = GUIDES_CONTENT.filter((g) => g.industry === ind.slug);
+  const general = ["why-isnt-my-business-on-chatgpt", "business-not-showing-on-google-maps", "get-first-google-reviews-new-business"];
+  const guides = [
+    ...GUIDES_CONTENT.filter((g) => g.industry === ind.slug),
+    ...GUIDES_CONTENT.filter((g) => general.includes(g.slug) && g.industry !== ind.slug),
+  ];
   return (
     <>
       <JsonLd data={faqLd([...ind.faqs, ...BASE_FAQ])} />
@@ -67,7 +71,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ indus
       </Section>
 
       {guides.length ? (
-        <Section eyebrow="Read first" title="A guide for you" className="mt-24">
+        <Section eyebrow="Read first" title="Guides for you" className="mt-24">
           <ul className="mt-6 space-y-2">
             {guides.map((g) => (
               <li key={g.slug}><Link className="link text-[1.15rem]" href={`/guides/${g.slug}`}>{g.title}</Link></li>

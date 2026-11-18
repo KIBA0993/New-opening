@@ -51,7 +51,7 @@ export const INDUSTRIES: Industry[] = [
     differentPlaceholder: "Family-owned, eco-friendly products, same-week booking",
     faqs: [
       { q: "I work from home. Will my address show up?", a: "No. We set you up as a service-area business, so customers see the towns you serve, not your house." },
-      { q: "Do I need a website?", a: "No. A good Google profile is enough to start. We'll tell you when a simple website would help." },
+      { q: "Do I need a website?", a: "Not to get on Google Maps. A good Google profile is enough to start. A simple site with a page per service helps AI assistants recommend you, and your kit writes those pages." },
     ],
   },
   {

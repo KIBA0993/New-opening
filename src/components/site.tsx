@@ -54,6 +54,7 @@ export function SiteFooter() {
             <li><Link className="text-ink-2 hover:text-ink" href="/autopilot">Weekly autopilot</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/tools/google-review-link">Free review QR code</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/guides">Guides</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/questions">Owner questions</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/me">Sign in</Link></li>
             <li><Link className="text-ink-2 hover:text-ink" href="/account">Manage subscription</Link></li>
             <li><a className="text-ink-2 hover:text-ink" href={`mailto:${CONTACT_EMAIL}`}>Contact: {CONTACT_EMAIL}</a></li>

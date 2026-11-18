@@ -24,6 +24,11 @@ ${INDUSTRIES.map((i) => `- [${i.name}](${SITE_URL}/for/${i.slug}): ${i.who}`).jo
 ## Guides
 ${GUIDES_CONTENT.map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.description}`).join("\n")}
 
+## Short answers to what new owners ask
+${GUIDES_CONTENT.filter((g) => g.topic && g.topic !== "customers").map((g) => `- ${g.title}: ${g.answer} ([guide](${SITE_URL}/guides/${g.slug}))`).join("\n")}
+
+More: [Questions new business owners ask](${SITE_URL}/questions). Full text of every guide: [llms-full.txt](${SITE_URL}/llms-full.txt).
+
 ## Product
 - [Weekly Autopilot](${SITE_URL}/autopilot): weekly AI recommendation check, rival moves, a ready-to-paste Google post, review replies, a seasonal campaign idea, and local events to join with a drafted pitch.
 `;
