@@ -290,7 +290,11 @@ export function picksIn(answer: string, exclude: string[] = []): string[] {
   for (let r of raw) {
     r = r.replace(/^[^:]{0,25}:\s*(?=\S)/, "").replace(/[.:,;!]+$/, "").replace(/\s+/g, " ").trim(); // "Top pick: X." -> "X"
     if (r.length < 3 || r.length > 60 || !/[A-Z0-9]/.test(r[0]) || isHeading(r) || /\d{3}/.test(r)) continue;
-    if (r.split(" ").length > 8) continue;
+    const words = r.split(" ");
+    if (words.length > 8) continue;
+    // Business names are in title case and don't end mid-phrase ("Be more cautious with" isn't one).
+    if (/^(and|or|with|of|for|the|at|in|to|a|an|by|on|is|are)$/i.test(words.at(-1)!)) continue;
+    if (words.filter((w) => /^[A-Z0-9&]/.test(w)).length * 2 < words.length + 1) continue;
     if (exclude.some((e) => sameBrand(e, r))) continue;
     if (out.some((o) => sameBrand(o, r))) continue;
     out.push(r);
