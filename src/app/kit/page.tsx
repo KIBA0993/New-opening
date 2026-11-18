@@ -11,6 +11,7 @@ import { AI_ROBOTS, businessSchema, writeKit } from "@/lib/kit";
 import { directoriesFor } from "@/lib/directories";
 import { GUIDES } from "@/lib/platforms";
 import { reviewLink } from "@/lib/providers/places";
+import { loadProgress } from "@/lib/kitCheck";
 import { KitView } from "./KitView";
 
 export const metadata: Metadata = { title: "Your Launch Kit", robots: { index: false } };
@@ -33,7 +34,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
   }
 
   const { profile } = paid;
-  const [kit, trial] = await Promise.all([writeKit(session_id, profile), kitTrial(session_id)]);
+  const [kit, trial, progress] = await Promise.all([writeKit(session_id, profile), kitTrial(session_id), loadProgress(session_id)]);
   const industry = industryBySlug(profile.industry)!;
 
   // Email the kit link once, so the owner can always get back here.
@@ -48,6 +49,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
       reviewUrl={reviewLink(profile.placeId)}
       serviceArea={industry.serviceArea}
       storeKey={session_id}
+      initialProgress={progress}
       industryName={industry.name}
       directories={directoriesFor(profile.industry)}
       schema={businessSchema(profile, kit, industry.serviceArea)}

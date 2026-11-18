@@ -11,6 +11,7 @@ import { getPlace, reviewLink, searchBusinesses } from "@/lib/providers/places";
 import { visitorLocation } from "@/lib/geo";
 import { suggestAnswers } from "@/lib/suggest";
 import type { IndustrySlug, OwnerProfile } from "@/lib/types";
+import { loadProgress } from "@/lib/kitCheck";
 import { KitView } from "../../kit/KitView";
 
 // Admin only: see the real Launch Kit for any business without a purchase (for demos and QA).
@@ -72,7 +73,7 @@ export default async function KitPreview({ searchParams }: { searchParams: SP })
     email: "",
   };
   const key = `preview:${place.id}|${industry}`;
-  const kit = await writeKit(key, profile);
+  const [kit, progress] = await Promise.all([writeKit(key, profile), loadProgress(key)]);
   const info = industryBySlug(industry)!;
 
   return (
@@ -89,6 +90,7 @@ export default async function KitPreview({ searchParams }: { searchParams: SP })
         reviewUrl={reviewLink(profile.placeId)}
         serviceArea={info.serviceArea}
         storeKey={key}
+        initialProgress={progress}
         industryName={info.name}
         directories={directoriesFor(industry)}
         schema={businessSchema(profile, kit, info.serviceArea)}
