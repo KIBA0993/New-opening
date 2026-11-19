@@ -78,7 +78,7 @@ export class SpendCapError extends Error {
   }
 }
 
-const CAPS = { ai: () => env.aiDailyCap, places: () => env.placesDailyCap, dataforseo: () => env.dataforseoDailyCap, grid: () => env.gridDailyCap };
+const CAPS = { ai: () => env.aiDailyCap, places: () => env.placesDailyCap, dataforseo: () => env.dataforseoDailyCap, grid: () => env.gridDailyCap, serper: () => env.serperDailyCap };
 
 /** Counts one paid call. Throws SpendCapError once today's cap is used up, so callers fall back. */
 export async function spend(kind: keyof typeof CAPS) {

@@ -12,6 +12,7 @@ import { directoriesFor } from "./directories";
 import { reviewFreshness, type ReviewFreshness } from "./providers/places";
 import { findRivals } from "./providers/places";
 import { dataforseoReady } from "./providers/dfs";
+import { hasSerper, ownerListings, rivalListings } from "./providers/serper";
 import type { Engine, EngineAnswer, Placement, IndustrySlug, ListingCheck, Place, Platform, Rival } from "./types";
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
@@ -439,6 +440,38 @@ async function directoryListings(place: Place, isNew: boolean, rivals: Place[], 
   return { listings, demo: false, profiles, directories };
 }
 
+// ---------- 3c) Listings through Serper.dev (when DataForSEO has no balance) ----------
+// Google site: searches for the business's own Yelp, Facebook and Apple Maps pages and its industry
+// directories (4 searches), plus one Yelp/Facebook search per rival. Under a cent per check, cached a week.
+
+async function serperListings(place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) {
+  const dirs = directoriesFor(industry);
+  const [mine, ...theirs] = await Promise.all([
+    ownerListings(place.name, place.address || area, dirs.map((d) => d.domain)),
+    ...rivals.map((r) => rivalListings(r.name, r.address || area)),
+  ]);
+  const listings: ListingCheck[] = [
+    isNew ? { platform: "google", state: "missing", note: "Not on Google yet. This is step one." } : { platform: "google", state: "found", note: "Found on Google Maps.", url: place.mapsUrl },
+    mine.yelp
+      ? { platform: "yelp", state: "found", note: "Found your Yelp page." }
+      : { platform: "yelp", state: "unknown", note: "We couldn't confirm a Yelp page. Search Yelp for your name to check. AI tools quote Yelp more than any other directory." },
+    mine.apple ? { platform: "apple", state: "found", note: "Found on Apple Maps." } : CHECK_YOURSELF[0],
+    CHECK_YOURSELF[1],
+    mine.facebook
+      ? { platform: "facebook", state: "found", note: "Found your Facebook page." }
+      : { platform: "facebook", state: "unknown", note: "We couldn't confirm a Facebook page. Worth a quick look." },
+    { platform: "chatgpt", state: "unknown", note: "ChatGPT's new business profiles can't be checked from outside yet. Claim yours to be safe." },
+  ];
+  const profiles = Object.fromEntries(rivals.map((r, i) => [r.name, { google: true, yelp: theirs[i].yelp, apple: null, bing: null, facebook: theirs[i].facebook }]));
+  const directories = mine.others ? { found: dirs.filter((d) => mine.others!.includes(d.domain)).map((d) => d.name), missing: dirs.filter((d) => !mine.others!.includes(d.domain)).map((d) => d.name) } : null;
+  return { listings, demo: false, profiles, directories };
+}
+
+const cachedSerperListings = (place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) =>
+  unstable_cache(() => serperListings(place, isNew, rivals, area, industry), ["listings-serper-v1", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
+    revalidate: 60 * 60 * 24 * 7,
+  })();
+
 const cachedListings = unstable_cache(
   async (placeKey: string, place: Place, isNew: boolean, rivals: Place[], area: string) => {
     void placeKey;
@@ -465,7 +498,9 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
     runAnswers(place.name, rivalPlaces.map((r) => r.name), prompts, area),
     dfs
       ? cachedDirectoryListings(place, isNew, rivalPlaces, area, industrySlug)
-      : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area).then((x) => ({ ...x, directories: null })),
+      : hasSerper() && !place.id.startsWith("demo_")
+        ? cachedSerperListings(place, isNew, rivalPlaces, area, industrySlug)
+        : cachedListings(`${place.id}|${place.name}`, place, isNew, rivalPlaces, area).then((x) => ({ ...x, directories: null })),
   ]);
   const rivals: Rival[] = rivalPlaces.map((r) => ({
     ...r,

@@ -39,6 +39,8 @@ export const env = {
   placesDailyCap: Number(process.env.PLACES_DAILY_CALL_CAP || 4000),
   dataforseoDailyCap: Number(process.env.DATAFORSEO_DAILY_CALL_CAP || 3000), // listing searches, $0.002 each
   gridDailyCap: Number(process.env.GRID_DAILY_CALL_CAP || 5000), // Maps grid spots (Places IDs-only searches are free)
+  serper: process.env.SERPER_API_KEY || "",
+  serperDailyCap: Number(process.env.SERPER_DAILY_CALL_CAP || 1500), // listings searches when DataForSEO is empty
   freeChecksPerDay: Number(process.env.FREE_CHECKS_PER_DAY || 5),
 };
 

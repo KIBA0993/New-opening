@@ -6,6 +6,7 @@ import { getJSON, setJSON } from "./kv";
 import { emptyProgress, type KitProgress, type StepCheck, type StepId } from "./kitSteps";
 import { sameBrand } from "./providers/ai";
 import { dataforseoReady } from "./providers/dfs";
+import { hasSerper, ownerListings } from "./providers/serper";
 import { directoriesSafe } from "./providers/listings";
 import { getPlace, searchBusinesses } from "./providers/places";
 import { readProfileFacts, readSite, type ProfileFacts, type SiteFacts } from "./providers/profile";
@@ -51,7 +52,11 @@ export async function runCheck(p: OwnerProfile): Promise<{ at: string; steps: Pa
   const [facts, site, listed] = await Promise.all([
     place && dfs ? readProfileFacts(place.id).catch(() => null) : Promise.resolve(null as ProfileFacts | null),
     website ? readSite({ ...(place || { id: "new", name: p.name, address: p.address }), name: p.name, website, phone } as Place).catch(() => null) : Promise.resolve(null as SiteFacts | null),
-    dfs ? directoriesSafe(p.name, place?.address || p.address || p.city, place?.id, dirs.map((d) => d.domain)) : Promise.resolve(null),
+    dfs
+      ? directoriesSafe(p.name, place?.address || p.address || p.city, place?.id, dirs.map((d) => d.domain))
+      : hasSerper()
+        ? ownerListings(p.name, place?.address || p.address || p.city, dirs.map((d) => d.domain)).then((h) => ({ ...h, snippets: undefined }))
+        : Promise.resolve(null),
   ]);
 
   const steps: Partial<Record<StepId, StepCheck>> = {};
