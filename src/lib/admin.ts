@@ -8,6 +8,7 @@ import { dayKey } from "./stats";
 
 // Owner-only admin page. The password lives in ADMIN_PASSWORD (Vercel env var), never in code.
 export const ADMIN_COOKIE = "od_admin";
+export const OWNER_PASS_COOKIE = "md_owner";
 export const adminEnabled = () => !!process.env.ADMIN_PASSWORD;
 
 const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -25,6 +26,14 @@ export async function startAdmin() {
     maxAge: 7 * 86400,
   });
   // Stop counting this browser in the traffic numbers (kept as long as browsers allow).
+  // Lets the owner open free checks without the daily cap, including from email links (lax, so it's sent on clicks from Gmail).
+  (await cookies()).set(OWNER_PASS_COOKIE, seal({ k: "owner", exp: Date.now() + 90 * 864e5 }), {
+    httpOnly: true,
+    secure: env.siteUrl.startsWith("https"),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 90 * 86400,
+  });
   (await cookies()).set("md_me", "1", { httpOnly: true, secure: env.siteUrl.startsWith("https"), sameSite: "lax", path: "/", maxAge: 400 * 86400 });
 }
 
@@ -35,6 +44,16 @@ export async function isAdmin() {
   } catch {
     return false;
   }
+}
+
+/** True for a browser that has signed in to /admin. Sent on links from email too, unlike the admin cookie. */
+export async function isOwnerBrowser() {
+  if (!adminEnabled()) return false;
+  try {
+    const c = await cookies();
+    if (unseal<{ k: string }>(c.get(OWNER_PASS_COOKIE)?.value)?.k === "owner") return true;
+  } catch {}
+  return isAdmin();
 }
 
 // ---------- Sales from Stripe ----------
