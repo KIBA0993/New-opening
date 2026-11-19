@@ -206,6 +206,7 @@ export async function spendToday() {
     { kind: "places", label: "Google Places", cap: env.placesDailyCap },
     { kind: "dataforseo", label: "DataForSEO", cap: env.dataforseoDailyCap },
     { kind: "grid", label: "Maps grid spots (Google Places, free)", cap: env.gridDailyCap },
+    { kind: "serper", label: "Serper (listings searches)", cap: env.serperDailyCap },
   ];
   return Promise.all(kinds.map(async (k) => ({ ...k, used: await peek(`cap:${k.kind}:${day}`) })));
 }
