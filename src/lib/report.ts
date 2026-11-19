@@ -353,8 +353,8 @@ async function scanListings(place: Place, isNew: boolean, area: string): Promise
       listings: [
         google,
         { platform: "yelp", state: "missing", note: "No Yelp page found. AI tools quote Yelp more than any other directory." },
-        { platform: "apple", state: "missing", note: "Not on Apple Maps. iPhone users won't see you in Maps or Siri." },
-        { platform: "bing", state: "different", note: "Bing shows an old phone number. Bing feeds ChatGPT's search, so fix it." },
+        { platform: "apple", state: "unknown", note: "" },
+        { platform: "bing", state: "unknown", note: "" },
         { platform: "facebook", state: "found", note: "Facebook page found." },
         chatgpt,
       ],
