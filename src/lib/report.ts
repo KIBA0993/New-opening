@@ -410,9 +410,17 @@ Return JSON: {"<exact business name>": {"yelp": true|false|null, "apple": true|f
 // "check it yourself" instead of a guess. Cost: about $0.002 per business, no AI calls.
 
 const CHECK_YOURSELF: ListingCheck[] = [
-  { platform: "apple", state: "unknown", note: "Apple Maps listings don't show up in web searches. Search your name in Apple Maps on an iPhone to check." },
-  { platform: "bing", state: "unknown", note: "Search your name at bing.com/maps to check. Bing feeds ChatGPT's search, so it's worth a look." },
+  { platform: "apple", state: "claim", note: "Siri and Apple Maps use this. Apple listings don't show up in web searches, so claim yours to be sure.", url: "https://businessconnect.apple.com" },
+  { platform: "bing", state: "claim", note: "ChatGPT's search leans on Bing. Bing Places copies your Google profile in one click.", url: "https://www.bing.com/forbusiness" },
 ];
+
+/** Apple Maps, Bing Places and ChatGPT can't be seen from outside: show them as a step to claim, not as "can't tell". */
+function asClaim(l: ListingCheck): ListingCheck {
+  if (l.state !== "unknown") return l;
+  if (l.platform === "apple" || l.platform === "bing") return CHECK_YOURSELF.find((c) => c.platform === l.platform)!;
+  if (l.platform === "chatgpt") return { platform: "chatgpt", state: "claim", note: "New in 2026: claim your ChatGPT business profile to control what ChatGPT shows about you.", url: "https://chatgpt.com/business-hub" };
+  return l;
+}
 
 async function directoryListings(place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) {
   const all = [place, ...rivals];
@@ -447,8 +455,8 @@ async function directoryListings(place: Place, isNew: boolean, rivals: Place[], 
 async function serperListings(place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) {
   const dirs = directoriesFor(industry);
   const [mine, ...theirs] = await Promise.all([
-    ownerListings(place.name, place.address || area, dirs.map((d) => d.domain)),
-    ...rivals.map((r) => rivalListings(r.name, r.address || area)),
+    ownerListings(place.name, place.address || area, dirs.map((d) => d.domain), place.phone),
+    ...rivals.map((r) => rivalListings(r.name, r.address || area, r.phone)),
   ]);
   const listings: ListingCheck[] = [
     isNew ? { platform: "google", state: "missing", note: "Not on Google yet. This is step one." } : { platform: "google", state: "found", note: "Found on Google Maps.", url: place.mapsUrl },
@@ -468,7 +476,7 @@ async function serperListings(place: Place, isNew: boolean, rivals: Place[], are
 }
 
 const cachedSerperListings = (place: Place, isNew: boolean, rivals: Place[], area: string, industry: IndustrySlug) =>
-  unstable_cache(() => serperListings(place, isNew, rivals, area, industry), ["listings-serper-v1", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
+  unstable_cache(() => serperListings(place, isNew, rivals, area, industry), ["listings-serper-v2", place.id, place.name, industry, rivals.map((r) => r.id).join(",")], {
     revalidate: 60 * 60 * 24 * 7,
   })();
 
@@ -509,7 +517,7 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   }));
   return {
     answers: ans.answers,
-    listings: lst.listings,
+    listings: lst.listings.map(asClaim),
     directories: lst.directories as { found: string[]; missing: string[] } | null,
     rivals,
     demo: ans.demo || lst.demo || rivalsDemo || place.id.startsWith("demo_"),
@@ -582,7 +590,7 @@ export interface CitationGap {
   state: ListingCheck["state"];
 }
 
-const DIRECTORIES: Platform[] = ["yelp", "apple", "bing", "facebook"];
+const DIRECTORIES: Platform[] = ["yelp", "facebook"]; // Apple Maps and Bing Places can't be checked for rivals either
 
 export function citationGaps(listings: ListingCheck[], rivals: Rival[]): CitationGap[] {
   return DIRECTORIES.map((platform) => {
@@ -701,6 +709,13 @@ export function findFixes(place: Place, report: { answers: EngineAnswer[]; listi
       const title = FIX_TITLE[s.label];
       if (s.light === light && title) fixes.push({ title, why: s.note });
     }
+  }
+  const toClaim = report.listings.filter((l) => (l.platform === "apple" || l.platform === "bing") && l.state === "claim");
+  if (toClaim.length) {
+    fixes.push({
+      title: `Claim your ${toClaim.map((l) => PLATFORM_LABEL[l.platform]).join(" and ")} listing${toClaim.length > 1 ? "s" : ""}`,
+      why: "Siri and Apple Maps use Apple's listings, and ChatGPT's search leans on Bing. Neither shows up in web searches, so claim them to be sure.",
+    });
   }
   if (report.listings.some((l) => l.platform === "chatgpt" && l.state !== "found")) {
     fixes.push({ title: "Claim your ChatGPT business profile", why: "New in 2026. It controls what ChatGPT shows about you." });

@@ -165,8 +165,8 @@ function AISkeleton({ engines }: { engines: string }) {
   );
 }
 
-const STATE_LIGHT: Record<ListingState, Light> = { found: "green", different: "yellow", missing: "red", unknown: "gray" };
-const STATE_LABEL: Record<ListingState, string> = { found: "Listed", different: "Wrong details", missing: "Missing", unknown: "Can't tell" };
+const STATE_LIGHT: Record<ListingState, Light> = { found: "green", different: "yellow", missing: "red", unknown: "gray", claim: "gray" };
+const STATE_LABEL: Record<ListingState, string> = { found: "Listed", different: "Wrong details", missing: "Missing", unknown: "Can't tell", claim: "Claim it" };
 
 /** The headline number: 0 to 100 from where you land in each AI answer (top pick, lower down, a mention, or not at all). */
 async function VisibilityHero({ place, industry }: { place: Place; industry: IndustrySlug }) {
@@ -300,7 +300,9 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
   // When no rival was named anywhere, a column of zeros says nothing: show who the AI picked instead.
   const anyRivalNamed = report.rivals.some((r) => r.aiMentions > 0);
   const outsidePicks = s.picked.slice(0, 4);
-  const listed = report.listings.filter((l) => l.state === "found").length;
+  const checked = report.listings.filter((l) => l.state !== "claim");
+  const toClaim = report.listings.filter((l) => l.state === "claim");
+  const listed = checked.filter((l) => l.state === "found").length;
   const gaps = citationGaps(report.listings, report.rivals);
   const counts = new Map<string, number>();
   for (const a of report.answers) for (const d of a.sources || []) counts.set(d, (counts.get(d) || 0) + 1);
@@ -358,7 +360,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
         ) : null}
         <ShowFew few={3} label={`See all ${report.rivals.length} rivals`}>
           <RivalRow name={`${place.name} (you)`} you rating={place.rating} reviews={place.reviewCount || 0} ai={anyRivalNamed ? s.named : undefined} total={s.total}
-            profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "unknown" ? null : l.state === "found" || l.state === "different"]))} />
+            profiles={Object.fromEntries(report.listings.map((l) => [l.platform, l.state === "unknown" || l.state === "claim" ? null : l.state === "found" || l.state === "different"]))} />
           {report.rivals.map((r) => (
             <RivalRow key={r.id} name={r.name} rating={r.rating} reviews={r.reviewCount || 0} ai={anyRivalNamed ? r.aiMentions : undefined} total={s.total} miles={r.distanceMiles} profiles={r.profiles || {}} />
           ))}
@@ -398,10 +400,10 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
       ) : null}
 
       <section aria-labelledby="listings" className="mt-12">
-        <h2 id="listings" className="font-display text-[1.7rem]">Where you're listed: {listed} of {report.listings.length}</h2>
+        <h2 id="listings" className="font-display text-[1.7rem]">Where you're listed: {listed} of {checked.length}</h2>
         <p className="mt-1 text-ink-2">AI tools trust businesses whose details match everywhere.</p>
         <ul className="mt-5 divide-y divide-line border-y border-line">
-          {report.listings.map((l) => (
+          {checked.map((l) => (
             <li key={l.platform} className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
               <div>
                 <p className="font-semibold">{PLATFORM_LABEL[l.platform]}</p>
@@ -411,6 +413,23 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
             </li>
           ))}
         </ul>
+        {toClaim.length ? (
+          <>
+            <h3 className="font-display mt-8 text-[1.3rem]">Claim these too</h3>
+            <p className="mt-1 text-[0.95rem] text-ink-2">No outside check can see these listings, so claim them yourself. Each takes a few minutes.</p>
+            <ul className="mt-3 divide-y divide-line border-y border-line">
+              {toClaim.map((l) => (
+                <li key={l.platform} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <div>
+                    <p className="font-semibold">{PLATFORM_LABEL[l.platform]}</p>
+                    <p className="text-[0.95rem] text-ink-3">{l.note}</p>
+                  </div>
+                  {l.url ? <a href={l.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost shrink-0">Claim it ↗</a> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
         <KitLine>The Launch Kit gets you listed with the same details everywhere</KitLine>
       </section>
     </>
@@ -591,7 +610,7 @@ async function Unlock({ place, industry, sharePath }: { place: Place; industry: 
   );
 }
 
-const PLATS: Platform[] = ["google", "apple", "bing", "yelp", "facebook"];
+const PLATS: Platform[] = ["google", "yelp", "facebook"]; // Apple Maps and Bing Places can't be checked from outside
 
 function RivalRow({ name, you, rating, reviews, ai, total, miles, profiles }: { name: string; you?: boolean; rating?: number; reviews: number; ai?: number; total: number; miles?: number; profiles: Partial<Record<Platform, boolean | null>> }) {
   return (
