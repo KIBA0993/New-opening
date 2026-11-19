@@ -18,17 +18,21 @@ const EXCLUDED = new Set((process.env.KIT_SALES_EXCLUDE || "").split(",").map((x
 async function countKitSales(): Promise<number> {
   if (!has.stripe()) return Number(process.env.KIT_DEMO_SALES || 0);
   let n = 0;
-  for await (const s of stripe().checkout.sessions.list({ status: "complete", limit: 100 })) {
+  for await (const s of stripe().checkout.sessions.list({ status: "complete", limit: 100, expand: ["data.payment_intent.latest_charge"] })) {
     // Only real buyers move the price: skip test mode and the owner's own test buys (src "owner",
     // set at checkout for the admin's browsers), plus any session IDs listed in KIT_SALES_EXCLUDE.
     if (s.metadata?.product !== "kit" || s.payment_status !== "paid") continue;
     if (!s.livemode || s.metadata?.src === "owner" || EXCLUDED.has(s.id)) continue;
+    // A refunded purchase (for example the owner's own test buy, refunded in Stripe) isn't a sale.
+    const pi = s.payment_intent;
+    const charge = pi && typeof pi === "object" ? pi.latest_charge : null;
+    if (charge && typeof charge === "object" && charge.refunded) continue;
     n++;
   }
   return n;
 }
 
-const cachedSales = unstable_cache(countKitSales, ["kit-sales-v2"], { revalidate: 300, tags: ["kit-sales"] });
+const cachedSales = unstable_cache(countKitSales, ["kit-sales-v3"], { revalidate: 300, tags: ["kit-sales"] });
 
 export interface KitPrice {
   amount: number;
