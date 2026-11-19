@@ -12,17 +12,23 @@ export const LAUNCH = {
   cap: Number(process.env.KIT_MAX_PRICE || 199),
 };
 
+const EXCLUDED = new Set((process.env.KIT_SALES_EXCLUDE || "").split(",").map((x) => x.trim()).filter(Boolean));
+
 /** Paid Launch Kit sales so far, counted from Stripe (no database). */
 async function countKitSales(): Promise<number> {
   if (!has.stripe()) return Number(process.env.KIT_DEMO_SALES || 0);
   let n = 0;
   for await (const s of stripe().checkout.sessions.list({ status: "complete", limit: 100 })) {
-    if (s.metadata?.product === "kit" && s.payment_status === "paid") n++;
+    // Only real buyers move the price: skip test mode and the owner's own test buys (src "owner",
+    // set at checkout for the admin's browsers), plus any session IDs listed in KIT_SALES_EXCLUDE.
+    if (s.metadata?.product !== "kit" || s.payment_status !== "paid") continue;
+    if (!s.livemode || s.metadata?.src === "owner" || EXCLUDED.has(s.id)) continue;
+    n++;
   }
   return n;
 }
 
-const cachedSales = unstable_cache(countKitSales, ["kit-sales-v1"], { revalidate: 300, tags: ["kit-sales"] });
+const cachedSales = unstable_cache(countKitSales, ["kit-sales-v2"], { revalidate: 300, tags: ["kit-sales"] });
 
 export interface KitPrice {
   amount: number;
