@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
-import { BASE_FAQ, Faq, HowItWorks, KitContents, Pricing, SampleAnswer, Stats } from "@/components/marketing";
+import { BASE_FAQ, CostCompare, Faq, HowItWorks, KitContents, LaunchPriceLine, Pricing, SampleAnswer, Stats } from "@/components/marketing";
+import { ProductDemo } from "@/components/ProductDemo";
 import { faqLd, JsonLd } from "@/components/JsonLd";
 import { PRICES } from "@/lib/env";
 import { LAUNCH } from "@/lib/pricing";
@@ -46,6 +47,7 @@ export default function Home() {
           <div className="mt-8 max-w-xl">
             <SearchBox />
           </div>
+          <LaunchPriceLine />
         </div>
         <div className="lg:pl-4">
           <SampleAnswer industry="home-services" />
@@ -53,6 +55,11 @@ export default function Home() {
       </section>
 
       <Stats />
+
+      <Section eyebrow="See it work" title="From your business name to every profile written, in 20 seconds." className="mt-20">
+        <div className="mt-8"><ProductDemo /></div>
+      </Section>
+
       <HowItWorks />
 
       <Section eyebrow="The Launch Kit" title="Everything a new business needs to be found, written for you." className="mt-24">
@@ -73,6 +80,7 @@ export default function Home() {
         </ul>
       </Section>
 
+      <CostCompare />
       <Pricing />
       <Faq />
 

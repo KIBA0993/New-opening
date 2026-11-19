@@ -216,3 +216,102 @@ export function Faq({ extra = [] }: { extra?: { q: string; a: string }[] }) {
     </Section>
   );
 }
+
+/** One line under the hero search box: today's kit price and how many are left at it (real Stripe sales). */
+export async function LaunchPriceLine() {
+  const kit = await kitPrice();
+  if (!dealOn() || kit.leftAtPrice == null) return null;
+  return (
+    <p className="mt-4 text-[0.95rem] text-ink-2">
+      <Link href="/#pricing" className="font-semibold text-accent-ink underline underline-offset-4">Launch Kit {kit.label}</Link>
+      <span className="text-ink-3"> · {kit.leftAtPrice} left at this price, then ${kit.next}.</span>
+    </p>
+  );
+}
+
+// Typical prices, Nov 2026. Sources are listed under the table; update them when they change.
+const COMPARE_SOURCES = [
+  { label: "BrightLocal pricing", href: "https://www.brightlocal.com/pricing/" },
+  { label: "SlashPost, GBP optimization cost (Sep 2026)", href: "https://slashpost.ai/blogs/google-business-profile/google-business-profile-optimization-cost" },
+];
+
+/** "What it costs to get found": the kit next to the usual alternatives for a new business. */
+export async function CostCompare() {
+  const kit = await kitPrice();
+  const rows: { name: string; first: string; year: string; you: string; you2: string; highlight?: boolean }[] = [
+    {
+      name: "Hire a local SEO agency",
+      first: "$300 to $500 setup",
+      year: "$1,800 to $6,500",
+      you: "They write and set up your Google profile",
+      you2: "Plus $125 to $500 a month to keep it going",
+    },
+    {
+      name: "BrightLocal (DIY software)",
+      first: "$41 a month",
+      year: "$369 or more",
+      you: "Tracking and reports, but you write everything",
+      you2: "Directory listings cost extra, from $2 to $3.20 each",
+    },
+    {
+      name: "Figure it out yourself",
+      first: "$0",
+      year: "$0, plus many evenings",
+      you: "Work out what each of 6+ sites wants",
+      you2: "Easy to miss what AI assistants read",
+    },
+    {
+      name: "MapDebut Launch Kit",
+      first: `${kit.label} once`,
+      year: `${kit.label}, no monthly fee`,
+      you: "Every profile written for you, step-by-step setup",
+      you2: `${REFUND_DAYS}-day money-back promise. Autopilot is optional.`,
+      highlight: true,
+    },
+  ];
+  return (
+    <Section eyebrow="Compare" title="What it usually costs to get a new business found." className="mt-24">
+      <p className="mt-3 max-w-2xl text-ink-2">Year one for one location: a Google profile plus the directories AI assistants read.</p>
+      <div className="mt-8 hidden overflow-hidden rounded-[14px] border border-line sm:block">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-paper-3 text-[0.85rem] uppercase tracking-wide text-ink-3">
+            <tr>
+              <th scope="col" className="px-4 py-3 font-semibold">Option</th>
+              <th scope="col" className="px-4 py-3 font-semibold">To start</th>
+              <th scope="col" className="px-4 py-3 font-semibold">Year one</th>
+              <th scope="col" className="px-4 py-3 font-semibold">What you get</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.name} className={`border-t border-line ${r.highlight ? "bg-good-bg" : "bg-paper-2"}`}>
+                <th scope="row" className="px-4 py-4 align-top font-display text-[1.15rem] font-normal">{r.name}</th>
+                <td className={`px-4 py-4 align-top ${r.highlight ? "font-semibold" : ""}`}>{r.first}</td>
+                <td className={`px-4 py-4 align-top ${r.highlight ? "text-[1.15rem] font-semibold text-good" : "font-semibold"}`}>{r.year}</td>
+                <td className="px-4 py-4 align-top text-ink-2">{r.you}<span className="block text-[0.9rem] text-ink-3">{r.you2}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className="mt-8 grid gap-3 sm:hidden">
+        {rows.map((r) => (
+          <li key={r.name} className="card p-4" style={r.highlight ? { background: "var(--good-bg)", borderColor: "var(--good)" } : undefined}>
+            <p className="font-display text-[1.2rem]">{r.name}</p>
+            <p className="mt-1"><span className="text-ink-3">Year one: </span><span className={`font-semibold ${r.highlight ? "text-good" : ""}`}>{r.year}</span></p>
+            <p className="text-[0.92rem] text-ink-3">To start: {r.first}</p>
+            <p className="mt-2 text-ink-2">{r.you}</p>
+            <p className="text-[0.9rem] text-ink-3">{r.you2}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-[0.8rem] text-ink-3">
+        Typical prices, November 2026. Agency year one is setup plus 12 months of upkeep. Sources:{" "}
+        {COMPARE_SOURCES.map((s, i) => (
+          <span key={s.href}>{i ? "; " : ""}<a className="link" href={s.href} target="_blank" rel="noopener noreferrer">{s.label}</a></span>
+        ))}
+        .
+      </p>
+    </Section>
+  );
+}
