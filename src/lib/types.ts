@@ -59,7 +59,8 @@ export interface EngineAnswer {
   sources?: string[]; // sites the engine read or cited (domains)
 }
 
-export type ListingState = "found" | "missing" | "different" | "unknown";
+/** "claim": a platform no outside check can see (Apple Maps, Bing Places, ChatGPT), shown as a step with a link, not counted. */
+export type ListingState = "found" | "missing" | "different" | "unknown" | "claim";
 
 export interface ListingCheck {
   platform: Platform;

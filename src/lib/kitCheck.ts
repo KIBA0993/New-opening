@@ -55,7 +55,7 @@ export async function runCheck(p: OwnerProfile): Promise<{ at: string; steps: Pa
     dfs
       ? directoriesSafe(p.name, place?.address || p.address || p.city, place?.id, dirs.map((d) => d.domain))
       : hasSerper()
-        ? ownerListings(p.name, place?.address || p.address || p.city, dirs.map((d) => d.domain)).then((h) => ({ ...h, snippets: undefined }))
+        ? ownerListings(p.name, place?.address || p.address || p.city, dirs.map((d) => d.domain), place?.phone || p.phone).then((h) => ({ ...h, snippets: undefined }))
         : Promise.resolve(null),
   ]);
 
