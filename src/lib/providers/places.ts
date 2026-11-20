@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { nearBias, type LatLng } from "../geo";
 import { env, has } from "../env";
 import { spend } from "../guard";
+import { isGenericLabel } from "../industries";
 import { mockPlace, mockRivals, mockSearch } from "../mock";
 import type { IndustrySlug, Place } from "../types";
 
@@ -266,7 +267,9 @@ async function fetchRivals(place: Place, industry: IndustrySlug, term: string): 
   const center = { latitude: place.lat, longitude: place.lng };
   const fields = FIELDS.map((f) => `places.${f}`).join(",");
   let found: GPlace[] = [];
-  if (place.primaryType) {
+  // A catch-all type ("Health", "Medical clinic" for a coach) would pull in the wrong kind of business,
+  // so those search by what the business really does instead.
+  if (place.primaryType && !(place.termHint || (industry === "wellness" && isGenericLabel(place.primaryTypeLabel)))) {
     const data = await gpost<{ places?: GPlace[] }>(
       "places:searchNearby",
       {
@@ -283,7 +286,8 @@ async function fetchRivals(place: Place, industry: IndustrySlug, term: string): 
     // Fall back to a text search ("nail salon") biased around the business.
     const data = await gpost<{ places?: GPlace[] }>(
       "places:searchText",
-      { textQuery: term, pageSize: 20, locationBias: { circle: { center, radius: 4800 } } },
+      // Rivals that hide their address (coaches, mobile groomers) count too.
+      { textQuery: term, pageSize: 20, includePureServiceAreaBusinesses: true, locationBias: { circle: { center, radius: 4800 } } },
       fields,
     ).catch((e) => {
       // Keep the nearby results we already have; with none, let the caller handle it.

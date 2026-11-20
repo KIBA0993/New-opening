@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { env, has } from "../env";
 import { spend } from "../guard";
+import { isGenericLabel, termFromSite } from "../industries";
 import type { Place } from "../types";
 import { dataforseoReady } from "./dfs";
 
@@ -92,6 +93,7 @@ export interface SiteFacts {
   prices: boolean; // shows prices
   address: boolean | null; // shows the street address Google has (null = no street number to look for)
   blocked: { chatgpt: boolean; perplexity: boolean; gemini: boolean } | null; // robots.txt shuts out the AI search crawler
+  termHint?: string; // what the site says the business does ("wellness coach"), for catch-all Google categories
 }
 
 const NOT_SERVICE = /^(about|contact|blog|news|privacy|terms|cart|checkout|account|login|signin|sign-in|register|faq|faqs|careers|jobs|gallery|reviews|testimonials|team|book|booking|shop|store|search|tag|category|author|feed|wp-|cdn-|policy|sitemap|home|index)/;
@@ -140,6 +142,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
   // Internal links, one level of path, that read like services.
   const paths = new Set<string>();
   let areaPage = false;
+  let contact: URL | null = null;
   const town = (place.city || "").split(",")[0].trim().toLowerCase();
   for (const m of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     let u: URL;
@@ -153,6 +156,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
     const label = m[2].replace(/<[^>]+>/g, " ").toLowerCase();
     if (!path || path === "/") continue;
     const slug = path.split("/").filter(Boolean).pop() || "";
+    if (!contact && /^contact/.test(slug)) contact = u;
     if (/area|location|city|serv(e|ing)-|near/.test(path) || (town.length > 2 && (path.includes(town.replace(/\s+/g, "-")) || label.includes(town)))) areaPage = true;
     if (NOT_SERVICE.test(slug)) continue;
     if (SERVICE_HINT.test(path) || SERVICE_HINT.test(label) || path.startsWith("/services/")) paths.add(path);
@@ -167,8 +171,25 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
     blocked = null;
   }
 
+  // Many sites show the phone only on their contact page, not the homepage.
+  const hasPhone = (d: string) => d.includes(want) || d.includes("1" + want);
+  let phone: boolean | null = want.length === 10 ? hasPhone(digits) : null;
+  if (phone === false) {
+    const pages = contact ? [contact] : [new URL("/contact", base), new URL("/contact-us", base)];
+    for (const u of pages) {
+      const r = await fetch(u, { headers, signal: AbortSignal.timeout(5000), redirect: "follow" }).catch(() => null);
+      if (!r?.ok || !(r.headers.get("content-type") || "").includes("html")) continue;
+      const body = (await r.text()).slice(0, 400_000).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
+      if (hasPhone(body.replace(/\D/g, ""))) {
+        phone = true;
+        break;
+      }
+    }
+  }
+
   return {
-    phone: want.length === 10 ? digits.includes(want) || digits.includes("1" + want) : null,
+    phone,
+    termHint: termFromSite(text),
     name: words.length ? words.every((w) => lower.includes(w)) : null,
     servicePages: paths.size,
     areaPage,
@@ -184,7 +205,17 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 export function siteFacts(place: Place): Promise<SiteFacts | null> {
   const want = (place.phone || "").replace(/\D/g, "").slice(-10);
   if (!place.website || place.id.startsWith("demo_")) return Promise.resolve(null);
-  return unstable_cache(() => readSite(place), ["site-facts-v1", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
+  return unstable_cache(() => readSite(place), ["site-facts-v2", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
+}
+
+/**
+ * When Google files a wellness business under a catch-all ("Health"), what its website says it does
+ * decides the search term. Uses the same cached site read as the score, so it costs nothing extra.
+ */
+export async function withSiteTerm(place: Place, industry: string): Promise<Place> {
+  if (industry !== "wellness" || place.termHint || !isGenericLabel(place.primaryTypeLabel)) return place;
+  const f = await siteFacts(place);
+  return f?.termHint ? { ...place, termHint: f.termHint } : place;
 }
 
 /** Does the business's website show the same phone number as Google? null when we can't tell. */

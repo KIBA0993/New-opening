@@ -2,6 +2,7 @@ import { DemoTag, Pill } from "@/components/ui";
 import { FREE_GRID, FULL_GRID, gridLive, gridSentence, mapFrame, mapGrid } from "@/lib/providers/grid";
 import { getPlace, locateTown } from "@/lib/providers/places";
 import { checkContext } from "@/lib/report";
+import { withSiteTerm } from "@/lib/providers/profile";
 import type { IndustrySlug, Place } from "@/lib/types";
 
 const TONE = (r: number | null) =>
@@ -26,6 +27,8 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
     );
   }
 
+  // A service-area business has no shop: the grid is centered on the town it serves.
+  const near = place.serviceArea ? `the center of ${place.city?.split(",")[0] || "your town"}` : "your shop";
   const spots = grid.cells.length;
   const center = Math.floor(spots / 2);
   const good = grid.top3 / spots;
@@ -39,7 +42,7 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
         <DemoTag show={grid.demo} />
       </div>
       <div className="mt-3">{title}</div>
-      <p className="font-display mt-2 text-[1.25rem] leading-snug">{gridSentence(grid)}</p>
+      <p className="font-display mt-2 text-[1.25rem] leading-snug">{gridSentence(grid, near)}</p>
       <p className="mt-1 text-ink-2">
         Each pin is where someone nearby searches &ldquo;{grid.keyword}&rdquo;, and the number is where you show up in Google Maps from there. AI assistants lean on these same results.
       </p>
@@ -47,7 +50,7 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
         className="relative mx-auto mt-5 aspect-square w-full max-w-md overflow-hidden rounded-2xl border border-line bg-paper-3 bg-center bg-no-repeat"
         style={grid.demo ? undefined : { backgroundImage: `url(${mapUrl})`, backgroundSize: `${frame.scale * 100}%` }}
         role="img"
-        aria-label={`Map of Google Maps positions around your shop. ${gridSentence(grid)}`}
+        aria-label={`Map of Google Maps positions around ${near}. ${gridSentence(grid, near)}`}
       >
         {grid.cells.map((c, i) => (
           <span
@@ -71,7 +74,7 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
 /** The buyers' 5x5 map, looked up from the saved profile. Render inside <Suspense>. */
 export async function BuyerMapGrid({ placeId, industry, town, className }: { placeId: string; industry: IndustrySlug; town?: string; className?: string }) {
   if (placeId === "new") return null;
-  const place = await getPlace(placeId).then((p) => p && locateTown(p, town)).catch(() => null);
+  const place = await getPlace(placeId).then((p) => p && locateTown(p, town)).then((p) => p && withSiteTerm(p, industry)).catch(() => null);
   if (!place) return null;
   return <MapGrid place={place} keyword={checkContext(place, industry).term} size={FULL_GRID} className={className} />;
 }

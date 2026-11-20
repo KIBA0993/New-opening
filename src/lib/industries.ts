@@ -248,16 +248,18 @@ export function guessIndustry(types: string[] = [], primaryType?: string, name?:
 }
 
 /** The phrase customers would type, e.g. "nail salon". */
-export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?: { name?: string; types?: string[]; primaryType?: string }): string {
+export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?: { name?: string; types?: string[]; primaryType?: string; termHint?: string }): string {
   // Google files med spas under "Spa", but their customers search "med spa" and their rivals are other med spas.
   const medical = place?.types?.some((t) => t === "medical_clinic" || t === "skin_care_clinic" || t === "medical_spa");
   if (place && (/\bmed(ical)?\s?spa\b/i.test(place.name || "") || (medical && /spa|beauty|skin/.test(place.primaryType || "")))) return "med spa";
   const label = primaryTypeLabel && primaryTypeLabel.length < 40 ? primaryTypeLabel.toLowerCase() : "";
   // Google files many studios and coaches under a catch-all like "Health" or "Medical clinic".
-  // Nobody searches "best health in Morrisville", so the name says what they really do.
+  // Nobody searches "best health in Morrisville", so their website (or else their name) says what they really do.
   if (industry.slug === "wellness" && (!label || GENERIC_LABEL.test(label))) {
+    if (place?.termHint) return place.termHint;
     const fromName = termFromName(place?.name);
     if (fromName) return fromName;
+    if (/^(health|wellness|point of interest|establishment|store|service|corporate office)$/.test(label)) return "wellness center";
   }
   if (label && !/^(health|point of interest|establishment|store|service|corporate office)$/.test(label)) return label;
   // No useful label from Google: its type code still beats the industry default ("hair_salon" -> "hair salon").
@@ -268,10 +270,41 @@ export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?
 
 const GENERIC_LABEL = /^(health|wellness|medical clinic|wellness center|point of interest|establishment|store|service|corporate office)$/;
 
+/** Google's category is a catch-all ("Health"), not what the business really is. */
+export const isGenericLabel = (label?: string) => !label || GENERIC_LABEL.test(label.toLowerCase());
+
+/** Words a wellness website uses for its main work, and the term customers search for it. */
+const SITE_TERMS: [RegExp, string][] = [
+  [/\bpilates\b/g, "pilates studio"],
+  [/\byoga\b/g, "yoga studio"],
+  [/\bchiropract\w*/g, "chiropractor"],
+  [/\bphysical therap\w*|\bphysiotherap\w*/g, "physical therapist"],
+  [/\bacupunct\w*/g, "acupuncturist"],
+  [/\bmassage\b/g, "massage therapist"],
+  [/\bassisted stretch\w*|\bstretch therap\w*/g, "assisted stretching"],
+  [/\bnutrition\w*|\bdietitian\b/g, "nutritionist"],
+  [/\bpersonal train\w*/g, "personal trainer"],
+  [/\bmeditation\b|\breiki\b/g, "meditation teacher"],
+];
+
+/**
+ * The search term a wellness website points to, from its own words. Coaching wins when it's a real
+ * theme, because coaches also name the methods they use (yoga, meditation) without being a studio.
+ */
+export function termFromSite(text: string): string | undefined {
+  const t = text.toLowerCase();
+  const count = (re: RegExp) => (t.match(re) || []).length;
+  const scored = SITE_TERMS.map(([re, term]) => ({ term, n: count(re) })).sort((a, b) => b.n - a.n);
+  const coach = count(/\b(health|wellness|life|somatic|holistic)?\s?coach(es|ing)?\b/g);
+  const top = scored[0];
+  if (coach >= 2 && coach * 2 >= top.n) return /\bhealth coach/.test(t) ? "health coach" : "wellness coach";
+  return top.n >= 3 ? top.term : undefined;
+}
+
 /** What the business name says it does, for when Google's category is too broad. Most specific first. */
 const NAME_TERMS: [RegExp, string][] = [
   [/\bmed(ical)?\s?spa\b/i, "med spa"],
-  [/stretch/i, "assisted stretching"],
+  [/stretch(ing)?\s*(studio|lab|zone|therapy)|assisted stretch|\bstretching\b/i, "assisted stretching"],
   [/pilates/i, "pilates studio"],
   [/yoga/i, "yoga studio"],
   [/chiropract/i, "chiropractor"],

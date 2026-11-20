@@ -24,6 +24,7 @@ export interface Place {
   hasHours?: boolean;
   mapsUrl?: string;
   status?: string; // OPERATIONAL, CLOSED_TEMPORARILY, ...
+  termHint?: string; // what their website says they do, when Google's category is a catch-all like "Health"
   serviceArea?: boolean; // hides its address on Google; lat/lng/city then come from the town the owner serves
 }
 
