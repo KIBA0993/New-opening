@@ -30,7 +30,7 @@ export function DealBanner({ endsAt, endLabel, after }: { endsAt: number; endLab
   const { text, over } = useCountdown(endsAt);
   if (over) return null;
   return (
-    <div className="bg-ink text-paper">
+    <div className="bg-ink text-paper" data-nosnippet>
       <p className="mx-auto max-w-5xl px-4 py-2 text-center text-[0.88rem] leading-snug sm:px-6 sm:text-[0.92rem]">
         <span className="font-semibold">Launch deal ends in </span>
         <span className="font-semibold tabular-nums text-[#f0a37f]" aria-live="off">

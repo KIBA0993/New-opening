@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     "Free check: see if Google, Maps and AI assistants recommend your new local business, and who they pick instead. Then set up every profile in one afternoon.",
   openGraph: { type: "website", siteName: "MapDebut" },
   twitter: { card: "summary_large_image" },
+  verification: { other: { "msvalidate.01": "A478BB225DB6C22ED3805354B3AA5B56" } },
 };
 
 export const viewport: Viewport = { themeColor: "#f4efe6", width: "device-width", initialScale: 1 };
