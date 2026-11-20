@@ -210,7 +210,7 @@ function whereIs(grid: GridResult, i: number) {
 const rankText = (r: number | null) => (r == null ? "out of the top 20" : r <= 3 ? "top 3" : `#${r}`);
 
 /** e.g. "You're top 3 near your shop, but drop to #11 about a mile south." */
-export function gridSentence(grid: GridResult): string {
+export function gridSentence(grid: GridResult, near = "your shop"): string {
   const center = Math.floor(grid.cells.length / 2);
   const here = grid.cells[center].rank;
   const worse = (a: number | null, b: number | null) => (a ?? 99) > (b ?? 99);
@@ -222,8 +222,9 @@ export function gridSentence(grid: GridResult): string {
     if (best < 0 || worse(grid.cells[best].rank, c.rank)) best = i;
   });
   const far = Math.round(grid.spacingMiles * ((grid.size - 1) / 2) * Math.SQRT2 * 10) / 10;
-  if (here != null && here <= 3 && grid.top3 === grid.cells.length) return `You're top 3 on Google Maps everywhere we checked, up to ${far} miles from your shop.`;
-  const start = here == null ? "You don't show up in Google Maps' top 20 even next to your shop" : here <= 3 ? "You're top 3 near your shop" : `You're #${here} near your shop`;
+  if (here != null && here <= 3 && grid.top3 === grid.cells.length) return `You're top 3 on Google Maps everywhere we checked, up to ${far} miles from ${near}.`;
+  const at = near === "your shop" ? "next to your shop" : `at ${near}`;
+  const start = here == null ? `You don't show up in Google Maps' top 20 even ${at}` : here <= 3 ? `You're top 3 near ${near}` : `You're #${here} near ${near}`;
   const w = grid.cells[worst];
   if (worst >= 0 && worse(w.rank, here)) return `${start}, but drop to ${w.rank == null ? "outside the top 20" : `#${w.rank}`} ${whereIs(grid, worst)}.`;
   const b = grid.cells[best];

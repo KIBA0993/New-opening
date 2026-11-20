@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { alertOwner, errText } from "./alert";
 import { has } from "./env";
-import { buildPrompts, industryBySlug, searchTerm } from "./industries";
+import { buildPrompts, industryBySlug, isGenericLabel, searchTerm } from "./industries";
 import { seeded } from "./mock";
 import { askEngineFull, cachedAskFree, checkEngines, ENGINE_LABEL, excerptAround, mentions, picksIn, sameBrand, searchJSON } from "./providers/ai";
 import { directoriesSafe, type DirectoryHit } from "./providers/listings";
@@ -100,9 +100,11 @@ export function signals(place: Place, rivals: Place[], x: ReadinessExtras = {}):
     "Categories",
     1,
     isNew ? 0 : !place.primaryType ? 0.4 : extra == null ? 0.8 : extra >= 2 ? 1 : extra === 1 ? 0.8 : 0.6,
-    place.primaryTypeLabel
+    place.primaryTypeLabel && !isGenericLabel(place.primaryTypeLabel)
       ? `Main category "${place.primaryTypeLabel}"${extra != null ? `, plus ${extra} more` : ""}.${extra != null && extra < 2 ? " Add 2 to 4 extra categories for the other things you do." : ""}`
-      : "AI tools match you to searches by category. Pick the most specific one.",
+      : place.primaryTypeLabel
+        ? `Google's data files you under the broad type "${place.primaryTypeLabel}". AI tools match you to searches by category, so make sure your main category is the most specific one that fits${extra != null && extra < 2 ? ", and add 2 to 4 extra categories" : ""}.`
+        : "AI tools match you to searches by category. Pick the most specific one.",
   );
   if ((x.profile && x.profile.description !== undefined) || isNew) {
     const len = x.profile?.description?.length || 0;

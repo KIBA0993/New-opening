@@ -6,6 +6,7 @@ import { seeded } from "./mock";
 import { cachedAsk, checkEngines, mentions, writeJSON } from "./providers/ai";
 import { findEvents, type RawEvent } from "./providers/events";
 import { findRivals, getPlace, latestReviews, locateTown } from "./providers/places";
+import { withSiteTerm } from "./providers/profile";
 import { postUpdateTasks, readUpdateTasks, rivalAnnouncements } from "./providers/rivalMoves";
 import type { LocalEvent, OwnerProfile, Place, RivalMove, WeeklyDigest } from "./types";
 
@@ -44,7 +45,7 @@ const DigestSchema = z.object({
 export async function composeDigest(profile: OwnerProfile, prev: Snapshot | null): Promise<{ digest: WeeklyDigest; next: Snapshot }> {
   const industry = industryBySlug(profile.industry)!;
   const place: Place =
-    (profile.placeId !== "new" && (await getPlace(profile.placeId).then((pl) => pl && locateTown(pl, profile.city)))) ||
+    (profile.placeId !== "new" && (await getPlace(profile.placeId).then((pl) => pl && locateTown(pl, profile.city)).then((pl) => pl && withSiteTerm(pl, profile.industry)))) ||
     ({ id: "new", name: profile.name, address: profile.address, city: profile.city } as Place);
   const term = searchTerm(industry, place.primaryTypeLabel, place);
   const area = place.city || profile.city;
