@@ -87,6 +87,7 @@ async function rankPlaces(keyword: string, pt: Pt, place: Place): Promise<number
       textQuery: keyword,
       pageSize: DEPTH,
       languageCode: "en",
+      includePureServiceAreaBusinesses: true, // otherwise a business that hides its address never shows up
       locationBias: { circle: { center: { latitude: pt.lat, longitude: pt.lng }, radius: RADIUS_M } },
     }),
     cache: "no-store",
@@ -181,7 +182,9 @@ export async function mapGrid(place: Place, keyword: string, size: number = FREE
   if (!gridLive()) return null;
   try {
     const fn = size > FREE_GRID ? weeklyGrid : dailyGrid;
-    return await fn(`${place.id}|${keyword}|${size}|${PROVIDER}`, place, keyword, size);
+    // A service-area business is centered on the town its owner gave, so the town is part of the key.
+    const at = place.serviceArea ? `|${place.lat!.toFixed(3)},${place.lng!.toFixed(3)}` : "";
+    return await fn(`${place.id}|${keyword}|${size}|${PROVIDER}${at}`, place, keyword, size);
   } catch (e) {
     console.error("grid", e);
     return null;

@@ -1,6 +1,6 @@
 import { DemoTag, Pill } from "@/components/ui";
 import { FREE_GRID, FULL_GRID, gridLive, gridSentence, mapFrame, mapGrid } from "@/lib/providers/grid";
-import { getPlace } from "@/lib/providers/places";
+import { getPlace, locateTown } from "@/lib/providers/places";
 import { checkContext } from "@/lib/report";
 import type { IndustrySlug, Place } from "@/lib/types";
 
@@ -61,7 +61,7 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
         ))}
       </div>
       <p className="mt-3 text-center text-[0.9rem] text-ink-3">
-        The outlined pin is your shop. Green is top 3, amber is 4 to 10, red is 11 to 20, gray is not in the top 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
+        {place.serviceArea ? `The outlined pin is the center of ${place.city?.split(",")[0] || "your town"}.` : "The outlined pin is your shop."} Green is top 3, amber is 4 to 10, red is 11 to 20, gray is not in the top 20.{grid.average ? ` Average position where you appear: ${grid.average}.` : ""}
         {grid.size < FULL_GRID ? ` The Launch Kit and Autopilot show a ${FULL_GRID}x${FULL_GRID} map that refreshes weekly.` : " Refreshes weekly."}
       </p>
     </section>
@@ -69,9 +69,9 @@ export async function MapGrid({ place, keyword, size = FREE_GRID, className = "m
 }
 
 /** The buyers' 5x5 map, looked up from the saved profile. Render inside <Suspense>. */
-export async function BuyerMapGrid({ placeId, industry, className }: { placeId: string; industry: IndustrySlug; className?: string }) {
+export async function BuyerMapGrid({ placeId, industry, town, className }: { placeId: string; industry: IndustrySlug; town?: string; className?: string }) {
   if (placeId === "new") return null;
-  const place = await getPlace(placeId).catch(() => null);
+  const place = await getPlace(placeId).then((p) => p && locateTown(p, town)).catch(() => null);
   if (!place) return null;
   return <MapGrid place={place} keyword={checkContext(place, industry).term} size={FULL_GRID} className={className} />;
 }

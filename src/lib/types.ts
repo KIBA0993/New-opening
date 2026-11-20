@@ -24,6 +24,7 @@ export interface Place {
   hasHours?: boolean;
   mapsUrl?: string;
   status?: string; // OPERATIONAL, CLOSED_TEMPORARILY, ...
+  serviceArea?: boolean; // hides its address on Google; lat/lng/city then come from the town the owner serves
 }
 
 /** What the owner tells us that Google doesn't know. */

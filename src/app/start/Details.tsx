@@ -158,9 +158,29 @@ export function Details({
         <span aria-hidden className="font-display flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-paper-3 text-2xl text-ink-3">{p.name?.[0]}</span>
         <span className="min-w-0">
           <span className="block font-semibold">{p.name}</span>
-          <span className="block truncate text-[0.92rem] text-ink-3">{p.address || p.city}</span>
+          <span className="block truncate text-[0.92rem] text-ink-3">{p.address || p.city || "Address hidden on Google"}</span>
         </span>
       </div>
+
+      {place?.serviceArea ? (
+        <div className="mt-7">
+          <label htmlFor="town" className="font-semibold">Which town do you serve?</label>
+          <p className="mt-1 text-[0.92rem] text-ink-3">Your Google profile hides your address, so tell us where to check who gets recommended.</p>
+          <input
+            id="town"
+            required
+            maxLength={120}
+            className="field mt-2"
+            placeholder="Morrisville, NC"
+            autoComplete="address-level2"
+            value={p.city || ""}
+            onChange={(e) => {
+              const city = e.target.value;
+              setP((x) => ({ ...x, city, areas: touched.current.areas ? x.areas : city.split(",")[0].trim() }));
+            }}
+          />
+        </div>
+      ) : null}
 
       <fieldset className="mt-7">
         <legend className="font-semibold">Type of business</legend>

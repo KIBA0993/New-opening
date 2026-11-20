@@ -10,7 +10,7 @@ import type { Light } from "@/components/ui";
 import { env, PRICES } from "@/lib/env";
 import { guessIndustry, industryBySlug, pluralTerm } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
-import { getPlace } from "@/lib/providers/places";
+import { getPlace, locateTown } from "@/lib/providers/places";
 import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
 import { isAdmin } from "@/lib/admin";
@@ -73,6 +73,12 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
     place = { id: "new", name: sp.name.slice(0, 120), address: sp.city.slice(0, 120), city: sp.city.slice(0, 120), reviewCount: 0 };
   } else {
     place = await getPlace(id);
+    // Service-area businesses hide their address, so Google gives us no location. Ask which town
+    // they serve instead of checking against made-up rivals and a blank town.
+    if (place && place.lat == null && !place.id.startsWith("demo_")) {
+      place = await locateTown(place, sp.city);
+      if (place.lat == null) return <TownForm place={place} industry={sp.industry} tried={!!sp.city} />;
+    }
   }
   if (!place) notFound();
 
@@ -80,13 +86,21 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   const allowed = await allowCheck(`${id}|${place.name}|${industry}`);
   const path = id === "new"
     ? `/report/new?industry=${industry}&name=${encodeURIComponent(place.name)}&city=${encodeURIComponent(place.city || "")}`
-    : `/report/${encodeURIComponent(id)}?industry=${industry}`;
+    : `/report/${encodeURIComponent(id)}?industry=${industry}${place.serviceArea && sp.city ? `&city=${encodeURIComponent(sp.city.slice(0, 120))}` : ""}`;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
       <p className="eyebrow">Free check</p>
       <h1 className="font-display mt-2 text-[2.2rem] leading-tight sm:text-[2.8rem]">{place.name}</h1>
-      <p className="mt-1 text-ink-3">{place.address}</p>
+      <p className="mt-1 text-ink-3">
+        {place.serviceArea ? (
+          <>
+            Serves {place.city} <a href={`?${new URLSearchParams({ ...(sp.industry ? { industry: sp.industry } : {}), city: "" })}`} className="ml-1 underline">change town</a>
+          </>
+        ) : (
+          place.address
+        )}
+      </p>
       {place.id !== "new" && (await isAdmin()) ? (
         <a href={`/admin/kit?place=${encodeURIComponent(place.id)}&industry=${industry}`} className="mt-2 inline-block rounded-full bg-warn-bg px-3 py-1 text-[0.85rem] font-semibold text-warn">
           Admin: preview this business&apos;s Launch Kit →
@@ -136,6 +150,26 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
           <p className="mt-2 text-ink-2">Each check asks AI assistants real questions, so we limit it to {env.freeChecksPerDay} a day. Come back tomorrow, or start your Launch Kit now.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** For a business that hides its address: which town to check it in. A plain GET form, so it works without JavaScript. */
+function TownForm({ place, industry, tried }: { place: Place; industry?: string; tried: boolean }) {
+  return (
+    <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+      <p className="eyebrow">Free check</p>
+      <h1 className="font-display mt-2 text-[2.2rem] leading-tight sm:text-[2.8rem]">{place.name}</h1>
+      <form method="get" className="card mt-5 p-5 sm:p-7">
+        <label htmlFor="town" className="font-semibold">Which town do you serve?</label>
+        <p className="mt-1 text-ink-2">
+          Your Google profile hides your address, which is right for a business that goes to its customers. We&apos;ll check who Google and AI assistants recommend in the town you name.
+        </p>
+        {industryBySlug(industry) ? <input type="hidden" name="industry" value={industry} /> : null}
+        <input id="town" name="city" required maxLength={120} className="field mt-3" placeholder="Morrisville, NC" autoComplete="address-level2" />
+        {tried ? <p className="mt-2 text-[0.92rem] text-bad">We couldn&apos;t find that town. Try the town and state, like &ldquo;Cary, NC&rdquo;.</p> : null}
+        <button type="submit" className="btn btn-primary mt-4">Run my check</button>
+      </form>
     </div>
   );
 }

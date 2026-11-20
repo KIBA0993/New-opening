@@ -125,12 +125,13 @@ export function StartFlow() {
       ...x,
       placeId: r.id,
       name: r.name,
-      address: r.address,
-      city: r.city || r.address.split(",").slice(-3, -1).join(",").trim() || r.address,
+      // A service-area business hides its address: the owner types the town they serve on the next step.
+      address: r.serviceArea ? "" : r.address,
+      city: r.serviceArea ? "" : r.city || r.address.split(",").slice(-3, -1).join(",").trim() || r.address,
       phone: r.phone,
       website: r.website,
       industry: x.industry || r.industryGuess,
-      areas: x.areas || (r.city ? r.city.split(",")[0] : ""),
+      areas: x.areas || (r.city && !r.serviceArea ? r.city.split(",")[0] : ""),
       // Asked later, inside the kit, where it matters. "unsure" shows both the edit and the claim steps.
       managesProfile: x.managesProfile || "unsure",
     }));

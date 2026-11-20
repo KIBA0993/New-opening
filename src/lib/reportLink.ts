@@ -34,6 +34,9 @@ export async function reportEmailTarget(reportPath: string): Promise<{ url: stri
   }
   const place = await getPlace(id);
   if (!place) return null;
+  // A service-area business (no location on Google) is checked in the town its owner typed.
+  const town = place.lat == null ? clean(u.searchParams.get("city"), 120) : "";
+  if (town) out.searchParams.set("city", town);
   return { url: out.toString(), name: place.name.slice(0, 120) };
 }
 

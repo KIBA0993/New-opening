@@ -78,6 +78,8 @@ function toPlace(p: GPlace): Place {
     hasHours: !!p.regularOpeningHours?.weekdayDescriptions?.length,
     mapsUrl: p.googleMapsUri,
     status: p.businessStatus,
+    // Google gives no location for service-area businesses that hide their address.
+    serviceArea: !p.location || undefined,
   };
 }
 
@@ -135,7 +137,7 @@ export async function searchBusinesses(q: string, near: LatLng | null = null): P
     if (legacy?.length) return { places: legacy, demo: false };
     const data = await gpost<{ places?: GPlace[] }>(
       "places:searchText",
-      { textQuery: e164(q), pageSize: 10, regionCode: "us" },
+      { textQuery: e164(q), pageSize: 10, regionCode: "us", includePureServiceAreaBusinesses: true },
       FIELDS.map((f) => `places.${f}`).join(","),
     );
     const all = (data.places || []).map(toPlace);
@@ -146,7 +148,8 @@ export async function searchBusinesses(q: string, near: LatLng | null = null): P
 
   const data = await gpost<{ places?: GPlace[] }>(
     "places:searchText",
-    { textQuery: q, pageSize: 6, ...nearBias(near) },
+    // Service-area businesses (mobile groomers, cleaners, coaches) hide their address; Google leaves them out unless asked.
+    { textQuery: q, pageSize: 6, includePureServiceAreaBusinesses: true, ...nearBias(near) },
     FIELDS.map((f) => `places.${f}`).join(","),
   );
   return { places: (data.places || []).map(toPlace), demo: false };
@@ -158,7 +161,7 @@ export async function autocomplete(input: string, sessionToken: string, near: La
   }
   const data = await gpost<{
     suggestions?: { placePrediction?: { placeId: string; structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } } } }[];
-  }>("places:autocomplete", { input, sessionToken, includedRegionCodes: ["us"], ...nearBias(near), ...(near ? { origin: near } : {}) }, "*");
+  }>("places:autocomplete", { input, sessionToken, includedRegionCodes: ["us"], includePureServiceAreaBusinesses: true, ...nearBias(near), ...(near ? { origin: near } : {}) }, "*");
   return (data.suggestions || [])
     .map((s) => s.placePrediction)
     .filter(Boolean)
@@ -208,6 +211,34 @@ async function fetchPlace(id: string, sessionToken?: string): Promise<Place | nu
   });
   if (!res.ok) return null;
   return toPlace((await res.json()) as GPlace);
+}
+
+const heldTown = unstable_cache(
+  async (town: string) => {
+    const data = await gpost<{ places?: GPlace[] }>(
+      "places:searchText",
+      { textQuery: town, pageSize: 1, regionCode: "us" },
+      "places.location,places.addressComponents,places.formattedAddress",
+    );
+    const hit = data.places?.[0];
+    if (!hit?.location) throw new Miss();
+    return { city: cityFrom(hit as GPlace) || town, lat: hit.location.latitude, lng: hit.location.longitude };
+  },
+  ["town-v1"],
+  { revalidate: HOLD },
+);
+
+/**
+ * A service-area business that hides its address has no location on Google, so rivals, AI questions
+ * and the Maps grid have nothing to center on. The owner tells us the town they serve; this places
+ * the business at that town's center. Businesses with a real location are returned unchanged.
+ */
+export async function locateTown(place: Place, town?: string | null): Promise<Place> {
+  const t = (town || "").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (place.lat != null || !t || !has.places() || place.id === "new" || place.id.startsWith("demo_")) return place;
+  const found = await heldTown(t.toLowerCase()).catch(() => null);
+  if (!found) return place;
+  return { ...place, city: found.city, lat: found.lat, lng: found.lng, serviceArea: true };
 }
 
 function milesBetween(a: { lat?: number; lng?: number }, b: { lat?: number; lng?: number }) {
