@@ -125,6 +125,16 @@ function streetIn(address: string | undefined, lowerText: string): boolean | nul
   return new RegExp(`\\b${m[1].toLowerCase()}\\s+(?:[nsew]\\.?\\s+)?${m[2].toLowerCase()}`).test(lowerText.replace(/\s+/g, " "));
 }
 
+/** The page title, meta and social descriptions and first headings: how the owner sums up the business. */
+function headline(html: string): string {
+  const parts = [
+    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1],
+    ...[...html.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description)["'][^>]*>/gi)].map((m) => m[0].match(/content=["']([^"']*)["']/i)?.[1]),
+    ...[...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)].slice(0, 2).map((m) => m[1]),
+  ];
+  return parts.filter(Boolean).join(" ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&");
+}
+
 /** What the business's website shows that AI assistants look for, read now (no cache). Throws when the site can't be read. */
 export async function readSite(place: Place): Promise<SiteFacts | null> {
   const want = (place.phone || "").replace(/\D/g, "").slice(-10);
@@ -189,7 +199,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 
   return {
     phone,
-    termHint: termFromSite(text),
+    termHint: termFromSite(text, headline(html)),
     name: words.length ? words.every((w) => lower.includes(w)) : null,
     servicePages: paths.size,
     areaPage,
@@ -205,7 +215,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 export function siteFacts(place: Place): Promise<SiteFacts | null> {
   const want = (place.phone || "").replace(/\D/g, "").slice(-10);
   if (!place.website || place.id.startsWith("demo_")) return Promise.resolve(null);
-  return unstable_cache(() => readSite(place), ["site-facts-v2", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
+  return unstable_cache(() => readSite(place), ["site-facts-v3", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
 }
 
 /**
