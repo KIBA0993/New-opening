@@ -291,7 +291,12 @@ const SITE_TERMS: [RegExp, string][] = [
  * The search term a wellness website points to, from its own words. Coaching wins when it's a real
  * theme, because coaches also name the methods they use (yoga, meditation) without being a studio.
  */
-export function termFromSite(text: string): string | undefined {
+export function termFromSite(text: string, headline = ""): string | undefined {
+  // What the page title and main heading say comes first: that's how the owner describes the business.
+  const h = headline.toLowerCase();
+  if (/\bcoach(es|ing)?\b/.test(h)) return /\bhealth coach/.test(h) ? "health coach" : "wellness coach";
+  const lead = SITE_TERMS.find(([re]) => new RegExp(re.source).test(h));
+  if (lead) return lead[1];
   const t = text.toLowerCase();
   const count = (re: RegExp) => (t.match(re) || []).length;
   const scored = SITE_TERMS.map(([re, term]) => ({ term, n: count(re) })).sort((a, b) => b.n - a.n);
