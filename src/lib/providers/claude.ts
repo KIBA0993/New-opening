@@ -16,6 +16,13 @@ function client() {
 // On a safety decline, the API re-runs the request on a fallback model it picks.
 const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const };
 
+// Prompt caching for web-searching calls. One request runs several search rounds on the server,
+// and each round re-reads everything so far (our prompt plus every page of results). With caching on,
+// the server caches those results as it goes, so later rounds (and a resumed pause_turn) read them at
+// about 5% of the normal input price instead of 100%. The prompts themselves are too short to cache
+// on their own (the model's minimum is 512 tokens), so the savings come from the search results.
+const CACHE = { cache_control: { type: "ephemeral" as const } };
+
 function webSearch(city?: string) {
   const [town, region] = (city || "").split(",").map((s) => s.trim());
   return {
@@ -57,6 +64,7 @@ async function searchTurnFull(system: string, prompt: string, city?: string): Pr
   for (let i = 0; i < 3; i++) {
     const res = await client().beta.messages.create({
       ...FALLBACK,
+      ...CACHE,
       model: env.claudeModel,
       max_tokens: 16000,
       output_config: { effort: "low" },
@@ -64,6 +72,8 @@ async function searchTurnFull(system: string, prompt: string, city?: string): Pr
       tools: [webSearch(city)],
       messages,
     });
+    const u = res.usage;
+    console.log(`claude search usage: in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens ?? 0} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`);
     text += textOf(res.content);
     const src = sourcesOf(res.content);
     cited.push(...src.cited);
