@@ -144,7 +144,7 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
           <h3 className="font-display text-[1.4rem]">Launch Kit</h3>
           <p className="mt-1 text-[2.2rem] font-semibold">{kit.label} <span className="text-base font-normal text-ink-3">one time</span></p>
           {kit.leftAtPrice != null ? <p className="text-[0.9rem] font-semibold text-accent">{launchNote(kit)}</p> : null}
-          {deal ? <p className="text-[0.9rem] text-ink-3">${DEAL.kitAfter} after the launch deal ends {dealEndLabel()}.</p> : null}
+          {deal ? <p className="text-[0.9rem] text-ink-3" data-nosnippet>${DEAL.kitAfter} after the launch deal ends {dealEndLabel()}.</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
             {["Every profile written for you", "Verification coach", "Guided setup on 6 platforms", "Review link, QR card and templates", "Yours to keep", ...(KIT_TRIAL_DAYS > 0 ? ["Optional: first week of Autopilot free"] : [])].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
@@ -157,7 +157,7 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
           <h3 className="font-display text-[1.4rem]">Weekly Autopilot</h3>
           <p className="mt-1 text-[2.2rem] font-semibold">{PRICES.monthly.label} <span className="text-base font-normal text-ink-3">{PRICES.monthly.note}</span></p>
           <p className="text-[0.9rem] text-ink-3">or {PRICES.yearly.label} {PRICES.yearly.note}</p>
-          {deal && DEAL.monthlyAfter !== DEAL.monthlyNow ? <p className="text-[0.9rem] font-semibold text-accent">Lock in this price. New plans are ${DEAL.monthlyAfter}/mo after {dealEndLabel()}.</p> : null}
+          {deal && DEAL.monthlyAfter !== DEAL.monthlyNow ? <p className="text-[0.9rem] font-semibold text-accent" data-nosnippet>Lock in this price. New plans are ${DEAL.monthlyAfter}/mo after {dealEndLabel()}.</p> : null}
           <ul className="mt-4 space-y-2 text-ink-2">
             {["Weekly AI recommendation check", "Rival moves and what to do about them", "A Google post and review replies, written", "Local events to join, with the pitch written"].map((t) => (
               <li key={t} className="flex gap-2"><Check className="mt-0.5 text-good" />{t}</li>
