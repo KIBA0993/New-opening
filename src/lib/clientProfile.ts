@@ -20,9 +20,11 @@ export function loadProfile(): OwnerProfile | null {
   }
 }
 
-export function reportPath(p: Pick<OwnerProfile, "placeId" | "industry" | "name" | "city">) {
+export function reportPath(p: Pick<OwnerProfile, "placeId" | "industry" | "name" | "city"> & { address?: string }) {
   if (p.placeId === "new") {
     return `/report/new?industry=${p.industry}&name=${encodeURIComponent(p.name)}&city=${encodeURIComponent(p.city)}`;
   }
-  return `/report/${encodeURIComponent(p.placeId)}?industry=${p.industry}`;
+  // No address means a service-area business: the report checks it in the town the owner typed.
+  const town = !p.address && p.city ? `&city=${encodeURIComponent(p.city)}` : "";
+  return `/report/${encodeURIComponent(p.placeId)}?industry=${p.industry}${town}`;
 }

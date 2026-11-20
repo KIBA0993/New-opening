@@ -48,7 +48,7 @@ export default async function AccountPage({ searchParams }: { searchParams: SP }
 
       <ThisWeek subId={account.subId} sessionId={session_id} week={Number(week) || 0} />
       <Suspense fallback={null}>
-        <BuyerMapGrid placeId={account.profile.placeId} industry={account.profile.industry} className="card mt-6 p-5 sm:p-7" />
+        <BuyerMapGrid placeId={account.profile.placeId} industry={account.profile.industry} town={account.profile.city} className="card mt-6 p-5 sm:p-7" />
       </Suspense>
 
       <div className="mt-8 flex flex-wrap gap-3">

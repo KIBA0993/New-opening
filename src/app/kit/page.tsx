@@ -66,7 +66,7 @@ export default async function KitPage({ searchParams }: { searchParams: Promise<
     />
     <div className="mx-auto max-w-3xl px-4 sm:px-6">
       <Suspense fallback={null}>
-        <BuyerMapGrid placeId={profile.placeId} industry={profile.industry} className="card mt-12 p-5 sm:p-7" />
+        <BuyerMapGrid placeId={profile.placeId} industry={profile.industry} town={profile.city} className="card mt-12 p-5 sm:p-7" />
       </Suspense>
       <section className="card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
         <div>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { allowIp } from "@/lib/guard";
 import { getAccount, spendCredit } from "@/lib/credits";
-import { getPlace } from "@/lib/providers/places";
+import { getPlace, locateTown } from "@/lib/providers/places";
 import { freshCheck } from "@/lib/report";
 import type { Place } from "@/lib/types";
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   const p = account.profile;
   const place: Place =
-    (p.placeId !== "new" && (await getPlace(p.placeId))) || { id: "new", name: p.name, address: p.address, city: p.city, reviewCount: 0 };
+    (p.placeId !== "new" && (await getPlace(p.placeId).then((pl) => pl && locateTown(pl, p.city)))) || { id: "new", name: p.name, address: p.address, city: p.city, reviewCount: 0 };
   try {
     const result = await freshCheck(place, p.industry);
     await spendCredit(account);

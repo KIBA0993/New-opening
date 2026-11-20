@@ -165,7 +165,7 @@ export const INDUSTRIES: Industry[] = [
     term: "massage therapist",
     menuWord: "services",
     serviceArea: false,
-    match: /dentist|doctor|chiropract|physiotherap|wellness|massage|gym|yoga|fitness|medical|health|spa|acupunct|clinic|therap|pilates/,
+    match: /dentist|doctor|chiropract|physiotherap|wellness|massage|gym|yoga|fitness|medical|health|spa|acupunct|clinic|therap|pilates|stretch|coach|nutrition|dietitian|personal_train|meditation|reiki/,
     hero: {
       title: "Open your practice to new patients from Google and ChatGPT, without an agency.",
       sub: "Agencies charge monthly retainers. We write your profiles, check where AI sends people instead, and keep it fresh every week for a fraction of the cost.",
@@ -252,11 +252,54 @@ export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?
   // Google files med spas under "Spa", but their customers search "med spa" and their rivals are other med spas.
   const medical = place?.types?.some((t) => t === "medical_clinic" || t === "skin_care_clinic" || t === "medical_spa");
   if (place && (/\bmed(ical)?\s?spa\b/i.test(place.name || "") || (medical && /spa|beauty|skin/.test(place.primaryType || "")))) return "med spa";
-  if (primaryTypeLabel && primaryTypeLabel.length < 40) return primaryTypeLabel.toLowerCase();
-  // No label from Google: its type code still beats the industry default ("hair_salon" -> "hair salon").
+  const label = primaryTypeLabel && primaryTypeLabel.length < 40 ? primaryTypeLabel.toLowerCase() : "";
+  // Google files many studios and coaches under a catch-all like "Health" or "Medical clinic".
+  // Nobody searches "best health in Morrisville", so the name says what they really do.
+  if (industry.slug === "wellness" && (!label || GENERIC_LABEL.test(label))) {
+    const fromName = termFromName(place?.name);
+    if (fromName) return fromName;
+  }
+  if (label && !/^(health|point of interest|establishment|store|service|corporate office)$/.test(label)) return label;
+  // No useful label from Google: its type code still beats the industry default ("hair_salon" -> "hair salon").
   const code = place?.primaryType;
   if (code && !/^(point_of_interest|establishment|store|service|health)$/.test(code)) return code.replace(/_/g, " ");
-  return industry.term;
+  return industry.slug === "wellness" && label ? "wellness center" : industry.term;
+}
+
+const GENERIC_LABEL = /^(health|wellness|medical clinic|wellness center|point of interest|establishment|store|service|corporate office)$/;
+
+/** What the business name says it does, for when Google's category is too broad. Most specific first. */
+const NAME_TERMS: [RegExp, string][] = [
+  [/\bmed(ical)?\s?spa\b/i, "med spa"],
+  [/stretch/i, "assisted stretching"],
+  [/pilates/i, "pilates studio"],
+  [/yoga/i, "yoga studio"],
+  [/chiropract/i, "chiropractor"],
+  [/physio|physical therap/i, "physical therapist"],
+  [/acupunct/i, "acupuncturist"],
+  [/massage/i, "massage therapist"],
+  [/personal train/i, "personal trainer"],
+  [/nutrition|dietitian/i, "nutritionist"],
+  [/\bcoach(ing)?\b/i, "wellness coach"],
+  [/dental|dentist/i, "dentist"],
+  [/crossfit|bootcamp|\bgym\b|fitness/i, "gym"],
+  [/meditation|reiki/i, "meditation studio"],
+];
+
+function termFromName(name?: string): string | undefined {
+  if (!name) return undefined;
+  return NAME_TERMS.find(([re]) => re.test(name))?.[1];
+}
+
+/** The "customer need" question for health and wellness, matched to the kind of practice. */
+function wellnessNeed(term: string): string {
+  if (/stretch/.test(term)) return "My back and hips are tight from sitting all day. Where in {area} can I get {term}?";
+  if (/massage|chiropract|physical therap|physio|acupunct/.test(term)) return "I have a sore back and live in {area}. Which {term} should I go to?";
+  if (/pilates|yoga|gym|trainer|fitness/.test(term)) return "I want to get stronger and more flexible. Which {term} in {area} is good for beginners?";
+  if (/coach|nutrition/.test(term)) return "I want help building healthier habits. Who's a good {term} in {area}?";
+  if (/dentist/.test(term)) return "I chipped a tooth and live in {area}. Which {term} can see me soon?";
+  if (/med spa/.test(term)) return "Where in {area} can I get Botox from someone experienced?";
+  return "I want to feel better and live in {area}. Which {term} should I try?";
 }
 
 /** "nail salon" -> "nail salons", "med spa" -> "med spas", "house cleaning service" -> "house cleaning services". */
@@ -272,7 +315,8 @@ export function pluralTerm(term: string): string {
  * When we know the owner's own services, the service question uses their first one.
  */
 export function buildPrompts(industry: Industry, term: string, area: string, service?: string): string[] {
-  const out = industry.promptTemplates.map((t) => t.replaceAll("{term}", term).replaceAll("{area}", area));
+  const templates = industry.slug === "wellness" ? [industry.promptTemplates[0], industry.promptTemplates[1], wellnessNeed(term)] : industry.promptTemplates;
+  const out = templates.map((t) => t.replaceAll("{term}", term).replaceAll("{area}", area));
   const svc = service?.split(/[,\n;]+/)[0]?.trim();
   if (svc && svc.length < 60) out[1] = `who does ${svc.toLowerCase()} in ${area}?`;
   return out;
