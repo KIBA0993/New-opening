@@ -153,7 +153,31 @@ export async function searchBusinesses(q: string, near: LatLng | null = null): P
     { textQuery: q, pageSize: 6, includePureServiceAreaBusinesses: true, ...nearBias(near) },
     FIELDS.map((f) => `places.${f}`).join(","),
   );
-  return { places: (data.places || []).map(toPlace), demo: false };
+  const places = (data.places || []).map(toPlace);
+  return { places: await swapClosed(places), demo: false };
+}
+
+/**
+ * An old listing Google marks permanently closed often outranks the owner's live one, which may hide
+ * its address. Look the closed one's phone number up and show the open listing that shares it instead.
+ */
+async function swapClosed(places: Place[]): Promise<Place[]> {
+  const closed = places.filter((p) => p.status === "CLOSED_PERMANENTLY");
+  if (!closed.length) return places;
+  const phones = [...new Set(closed.map((p) => (p.phone || "").replace(/\D/g, "").slice(-10)).filter((d) => d.length === 10))].slice(0, 2);
+  const found: Place[] = [];
+  for (const digits of phones) {
+    const data = await gpost<{ places?: GPlace[] }>(
+      "places:searchText",
+      { textQuery: e164(digits), pageSize: 5, regionCode: "us", includePureServiceAreaBusinesses: true },
+      FIELDS.map((f) => `places.${f}`).join(","),
+    ).catch(() => ({ places: [] as GPlace[] }));
+    found.push(...(data.places || []).map(toPlace).filter((p) => p.status !== "CLOSED_PERMANENTLY" && (p.phone || "").replace(/\D/g, "").slice(-10) === digits));
+  }
+  const open = places.filter((p) => p.status !== "CLOSED_PERMANENTLY");
+  const extra = found.filter((f) => !open.some((p) => p.id === f.id));
+  // Open listings first; keep the closed ones last so an owner can still see and pick them.
+  return [...extra, ...open, ...closed].slice(0, 6);
 }
 
 export async function autocomplete(input: string, sessionToken: string, near: LatLng | null = null) {

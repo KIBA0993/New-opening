@@ -165,7 +165,7 @@ export const INDUSTRIES: Industry[] = [
     term: "massage therapist",
     menuWord: "services",
     serviceArea: false,
-    match: /dentist|doctor|chiropract|physiotherap|wellness|massage|gym|yoga|fitness|medical|health|spa|acupunct|clinic|therap|pilates|stretch|coach|nutrition|dietitian|personal_train|meditation|reiki/,
+    match: /dentist|doctor|chiropract|physiotherap|wellness|massage|gym|yoga|fitness|medical|health|spa|acupunct|clinic|therap|pilates|stretch|coach|nutrition|dietitian|personal_train|meditation|reiki|dance|sports_school/,
     hero: {
       title: "Open your practice to new patients from Google and ChatGPT, without an agency.",
       sub: "Agencies charge monthly retainers. We write your profiles, check where AI sends people instead, and keep it fresh every week for a fraction of the cost.",
@@ -271,7 +271,7 @@ export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?
     if (place?.termHint) return place.termHint;
     const fromName = termFromName(place?.name);
     if (fromName) return fromName;
-    if (/^(health|wellness|point of interest|establishment|store|service|corporate office)$/.test(label)) return "wellness center";
+    if (/^(health|wellness|point of interest|establishment|store|service|corporate office|association \/ organization|association or organization)$/.test(label)) return "wellness center";
   }
   if (label && !/^(health|point of interest|establishment|store|service|corporate office)$/.test(label)) return label;
   // No useful label from Google: its type code still beats the industry default ("hair_salon" -> "hair salon").
@@ -280,7 +280,8 @@ export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?
   return industry.slug === "wellness" && label ? "wellness center" : industry.term;
 }
 
-const GENERIC_LABEL = /^(health|wellness|medical clinic|wellness center|point of interest|establishment|store|service|corporate office)$/;
+// "Sports school" is how Google's data labels dance and martial arts schools; "Association / Organization" says nothing either.
+const GENERIC_LABEL = /^(health|wellness|medical clinic|wellness center|point of interest|establishment|store|service|corporate office|sports school|association \/ organization|association or organization)$/;
 
 /** Google's category is a catch-all ("Health"), not what the business really is. */
 export const isGenericLabel = (label?: string) => !label || GENERIC_LABEL.test(label.toLowerCase());
@@ -297,6 +298,7 @@ const SITE_TERMS: [RegExp, string][] = [
   [/\bnutrition\w*|\bdietitian\b/g, "nutritionist"],
   [/\bpersonal train\w*/g, "personal trainer"],
   [/\bmeditation\b|\breiki\b/g, "meditation teacher"],
+  [/\bdanc(e|es|ing)\b|\bballet\b|\bhip hop\b/g, "dance studio"],
 ];
 
 /**
@@ -334,6 +336,7 @@ const NAME_TERMS: [RegExp, string][] = [
   [/dental|dentist/i, "dentist"],
   [/crossfit|bootcamp|\bgym\b|fitness/i, "gym"],
   [/meditation|reiki/i, "meditation studio"],
+  [/danc(e|ing)|ballet/i, "dance studio"],
 ];
 
 function termFromName(name?: string): string | undefined {

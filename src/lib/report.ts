@@ -91,7 +91,13 @@ export function signals(place: Place, rivals: Place[], x: ReadinessExtras = {}):
   const rows: { label: string; weight: number; points: number | null; note: string }[] = [];
   const add = (label: string, weight: number, points: number | null, note: string) => rows.push({ label, weight, points: points == null ? null : clamp(points), note });
 
-  add("On Google Maps", 2, isNew ? 0 : 1, isNew ? "Not on Google yet. Every AI tool checks Google first." : "Your profile is live.");
+  const closed = place.status === "CLOSED_PERMANENTLY";
+  add(
+    "On Google Maps",
+    2,
+    isNew || closed ? 0 : 1,
+    isNew ? "Not on Google yet. Every AI tool checks Google first." : closed ? "Google shows this listing as permanently closed, so customers and AI tools skip it." : "Your profile is live.",
+  );
   if (x.profile?.claimed != null || isNew) {
     add("Profile claimed by you", 2, x.profile?.claimed ? 1 : 0, x.profile?.claimed ? "You manage this profile." : "Unclaimed. Anyone can suggest edits, and Google trusts it less. Claim and verify it.");
   }
