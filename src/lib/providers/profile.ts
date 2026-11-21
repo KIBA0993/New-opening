@@ -2,7 +2,8 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { env, has } from "../env";
 import { spend } from "../guard";
-import { isGenericLabel, termFromSite } from "../industries";
+import { isGenericLabel } from "../industries";
+import { homepageFacts, MAX_HTML, pageText } from "../siteText";
 import type { Place } from "../types";
 import { dataforseoReady } from "./dfs";
 
@@ -94,6 +95,8 @@ export interface SiteFacts {
   address: boolean | null; // shows the street address Google has (null = no street number to look for)
   blocked: { chatgpt: boolean; perplexity: boolean; gemini: boolean } | null; // robots.txt shuts out the AI search crawler
   termHint?: string; // what the site says the business does ("wellness coach"), for catch-all Google categories
+  kind?: string; // what the site says it is, any industry ("dance studio"), suggested when Google's category looks wrong
+  labelSeen?: boolean | null; // the words of Google's category appear on the site (null = nothing telling to look for)
 }
 
 const NOT_SERVICE = /^(about|contact|blog|news|privacy|terms|cart|checkout|account|login|signin|sign-in|register|faq|faqs|careers|jobs|gallery|reviews|testimonials|team|book|booking|shop|store|search|tag|category|author|feed|wp-|cdn-|policy|sitemap|home|index)/;
@@ -125,6 +128,21 @@ function streetIn(address: string | undefined, lowerText: string): boolean | nul
   return new RegExp(`\\b${m[1].toLowerCase()}\\s+(?:[nsew]\\.?\\s+)?${m[2].toLowerCase()}`).test(lowerText.replace(/\s+/g, " "));
 }
 
+/** Reads a response body up to MAX_HTML characters, so a huge page can't run the function out of memory. */
+async function capped(res: Response): Promise<string> {
+  if (!res.body) return (await res.text()).slice(0, MAX_HTML);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let out = "";
+  while (out.length < MAX_HTML) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    out += dec.decode(value, { stream: true });
+  }
+  reader.cancel().catch(() => undefined);
+  return out.slice(0, MAX_HTML);
+}
+
 /** What the business's website shows that AI assistants look for, read now (no cache). Throws when the site can't be read. */
 export async function readSite(place: Place): Promise<SiteFacts | null> {
   const want = (place.phone || "").replace(/\D/g, "").slice(-10);
@@ -133,10 +151,10 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
   const res = await fetch(place.website!, { headers, signal: AbortSignal.timeout(6000), redirect: "follow" });
   if (!res.ok || !(res.headers.get("content-type") || "").includes("html")) return null;
   const base = new URL(res.url || place.website!);
-  const html = (await res.text()).slice(0, 600_000);
-  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
+  const html = await capped(res);
+  const home = homepageFacts(html, place);
+  const text = home.text;
   const lower = text.toLowerCase();
-  const digits = text.replace(/\D/g, "");
   const words = place.name.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2).slice(0, 2);
 
   // Internal links, one level of path, that read like services.
@@ -173,13 +191,13 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 
   // Many sites show the phone only on their contact page, not the homepage.
   const hasPhone = (d: string) => d.includes(want) || d.includes("1" + want);
-  let phone: boolean | null = want.length === 10 ? hasPhone(digits) : null;
+  let phone: boolean | null = home.phone;
   if (phone === false) {
     const pages = contact ? [contact] : [new URL("/contact", base), new URL("/contact-us", base)];
     for (const u of pages) {
       const r = await fetch(u, { headers, signal: AbortSignal.timeout(5000), redirect: "follow" }).catch(() => null);
       if (!r?.ok || !(r.headers.get("content-type") || "").includes("html")) continue;
-      const body = (await r.text()).slice(0, 400_000).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
+      const body = pageText(await capped(r));
       if (hasPhone(body.replace(/\D/g, ""))) {
         phone = true;
         break;
@@ -189,7 +207,9 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 
   return {
     phone,
-    termHint: termFromSite(text),
+    termHint: home.termHint,
+    kind: home.kind,
+    labelSeen: home.labelSeen,
     name: words.length ? words.every((w) => lower.includes(w)) : null,
     servicePages: paths.size,
     areaPage,
@@ -205,7 +225,7 @@ export async function readSite(place: Place): Promise<SiteFacts | null> {
 export function siteFacts(place: Place): Promise<SiteFacts | null> {
   const want = (place.phone || "").replace(/\D/g, "").slice(-10);
   if (!place.website || place.id.startsWith("demo_")) return Promise.resolve(null);
-  return unstable_cache(() => readSite(place), ["site-facts-v2", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
+  return unstable_cache(() => readSite(place), ["site-facts-v4", place.id, place.website, want], { revalidate: 60 * 60 * 24 * 7 })().catch(() => null);
 }
 
 /**

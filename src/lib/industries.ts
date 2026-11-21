@@ -247,8 +247,20 @@ export function guessIndustry(types: string[] = [], primaryType?: string, name?:
   return undefined;
 }
 
+/**
+ * Which industry's questions fit a business type the owner confirmed. Classes and lessons (dance,
+ * martial arts, swim) use the health and wellness set, whose questions are about classes for beginners.
+ */
+export function industryForTerm(term: string): IndustrySlug | undefined {
+  const t = term.toLowerCase();
+  if (/danc|ballet|martial|karate|gymnastic|swim|music|tutor|art class|lesson|class/.test(t)) return "wellness";
+  return guessIndustry([t.replace(/\s+/g, "_")], undefined, t);
+}
+
 /** The phrase customers would type, e.g. "nail salon". */
-export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?: { name?: string; types?: string[]; primaryType?: string; termHint?: string }): string {
+export function searchTerm(industry: Industry, primaryTypeLabel?: string, place?: { name?: string; types?: string[]; primaryType?: string; termHint?: string; ownerTerm?: string }): string {
+  // The owner told us what they are: nothing beats that.
+  if (place?.ownerTerm) return place.ownerTerm;
   // Google files med spas under "Spa", but their customers search "med spa" and their rivals are other med spas.
   const medical = place?.types?.some((t) => t === "medical_clinic" || t === "skin_care_clinic" || t === "medical_spa");
   if (place && (/\bmed(ical)?\s?spa\b/i.test(place.name || "") || (medical && /spa|beauty|skin/.test(place.primaryType || "")))) return "med spa";
@@ -291,7 +303,12 @@ const SITE_TERMS: [RegExp, string][] = [
  * The search term a wellness website points to, from its own words. Coaching wins when it's a real
  * theme, because coaches also name the methods they use (yoga, meditation) without being a studio.
  */
-export function termFromSite(text: string): string | undefined {
+export function termFromSite(text: string, headline = ""): string | undefined {
+  // What the page title and main heading say comes first: that's how the owner describes the business.
+  const h = headline.toLowerCase();
+  if (/\bcoach(es|ing)?\b/.test(h)) return /\bhealth coach/.test(h) ? "health coach" : "wellness coach";
+  const lead = SITE_TERMS.find(([re]) => new RegExp(re.source).test(h));
+  if (lead) return lead[1];
   const t = text.toLowerCase();
   const count = (re: RegExp) => (t.match(re) || []).length;
   const scored = SITE_TERMS.map(([re, term]) => ({ term, n: count(re) })).sort((a, b) => b.n - a.n);
@@ -326,6 +343,7 @@ function termFromName(name?: string): string | undefined {
 
 /** The "customer need" question for health and wellness, matched to the kind of practice. */
 function wellnessNeed(term: string): string {
+  if (/danc|martial|karate|gymnastic|swim|music|tutor|art class/.test(term)) return `I'm looking for ${term.replace(/\s+(studio|school|lessons|classes)$/, "")} classes for my kids in {area}. Which {term} would you recommend?`;
   if (/stretch/.test(term)) return "My back and hips are tight from sitting all day. Where in {area} can I get {term}?";
   if (/massage|chiropract|physical therap|physio|acupunct/.test(term)) return "I have a sore back and live in {area}. Which {term} should I go to?";
   if (/pilates|yoga|gym|trainer|fitness/.test(term)) return "I want to get stronger and more flexible. Which {term} in {area} is good for beginners?";

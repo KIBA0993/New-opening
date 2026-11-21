@@ -8,10 +8,11 @@ import { TrackOnce } from "@/components/TrackOnce";
 import { DemoTag, Pill } from "@/components/ui";
 import type { Light } from "@/components/ui";
 import { env, PRICES } from "@/lib/env";
-import { guessIndustry, industryBySlug, pluralTerm } from "@/lib/industries";
+import { guessIndustry, industryBySlug, industryForTerm, pluralTerm } from "@/lib/industries";
 import { ENGINE_LABEL, engineNames } from "@/lib/providers/ai";
-import { getPlace, locateTown } from "@/lib/providers/places";
-import { withSiteTerm } from "@/lib/providers/profile";
+import { getPlace, locateTown, searchBusinesses } from "@/lib/providers/places";
+import { siteFacts, withSiteTerm } from "@/lib/providers/profile";
+import { checkConfidence, cleanOwnerTerm, type Doubt } from "@/lib/confidence";
 import { allowIp, isHuman, looksLikeBot } from "@/lib/guard";
 import { allowCheck } from "@/lib/ratelimit";
 import { isAdmin } from "@/lib/admin";
@@ -30,7 +31,7 @@ export const metadata: Metadata = { title: "Your free check", robots: { index: f
 // A first-time check (AI answers, listings, Maps grid, profile lookups) can take over a minute.
 export const maxDuration = 300;
 
-type SP = Promise<{ industry?: string; name?: string; city?: string }>;
+type SP = Promise<{ industry?: string; name?: string; city?: string; term?: string; ok?: string }>;
 
 export default async function ReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SP }) {
   const { id: rawId } = await params;
@@ -69,26 +70,48 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   }
 
   let place: Place | null;
+  // ok=1: the owner confirmed their business type and town on the form below, so we use their words.
+  const confirmed = sp.ok === "1";
+  const ownerTerm = confirmed ? cleanOwnerTerm(sp.term) : undefined;
+  const town = (sp.city || "").replace(/\s+/g, " ").trim().slice(0, 120);
   if (id === "new") {
     if (!sp.name || !sp.city) notFound();
     place = { id: "new", name: sp.name.slice(0, 120), address: sp.city.slice(0, 120), city: sp.city.slice(0, 120), reviewCount: 0 };
   } else {
     place = await getPlace(id);
-    // Service-area businesses hide their address, so Google gives us no location. Ask which town
-    // they serve instead of checking against made-up rivals and a blank town.
-    if (place && place.lat == null && !place.id.startsWith("demo_")) {
-      place = await locateTown(place, sp.city);
-      if (place.lat == null) return <TownForm place={place} industry={sp.industry} tried={!!sp.city} />;
+    if (place && !place.id.startsWith("demo_")) {
+      if (!confirmed) {
+        // Confidence check: a closed listing, a hidden address or a category that doesn't match the
+        // website means we'd be guessing. Ask the owner first (costs no AI calls and no free check).
+        const site = await siteFacts(place);
+        const conf = checkConfidence(place, site, industryBySlug(sp.industry)?.slug);
+        if (conf.doubts.length) {
+          const others = conf.doubts.some((d) => d.kind === "closed") ? await openTwins(place) : [];
+          return <ConfirmForm place={place} doubts={conf.doubts} term={conf.term} industry={conf.industry} town={town || place.city || ""} others={others} />;
+        }
+      } else {
+        // Service-area businesses hide their address: the town they named becomes the center.
+        if (place.lat == null) {
+          place = await locateTown(place, town);
+          if (place.lat == null) {
+            const conf = checkConfidence(place, null, industryBySlug(sp.industry)?.slug);
+            return <ConfirmForm place={place} doubts={conf.doubts} term={ownerTerm || conf.term} industry={conf.industry} town={town} others={[]} badTown />;
+          }
+        } else if (town) {
+          place = { ...place, city: town };
+        }
+        if (ownerTerm) place = { ...place, ownerTerm };
+      }
     }
   }
   if (!place) notFound();
 
-  const industry = (industryBySlug(sp.industry)?.slug || guessIndustry(place.types, place.primaryType, place.name) || "home-services") as IndustrySlug;
+  const industry = ((ownerTerm && industryForTerm(ownerTerm)) || industryBySlug(sp.industry)?.slug || guessIndustry(place.types, place.primaryType, place.name) || "home-services") as IndustrySlug;
   if (place.id !== "new") place = await withSiteTerm(place, industry);
-  const allowed = await allowCheck(`${id}|${place.name}|${industry}`);
+  const allowed = await allowCheck(`${id}|${place.name}|${industry}|${ownerTerm || ""}|${confirmed ? place.city : ""}`);
   const path = id === "new"
     ? `/report/new?industry=${industry}&name=${encodeURIComponent(place.name)}&city=${encodeURIComponent(place.city || "")}`
-    : `/report/${encodeURIComponent(id)}?industry=${industry}${place.serviceArea && sp.city ? `&city=${encodeURIComponent(sp.city.slice(0, 120))}` : ""}`;
+    : `/report/${encodeURIComponent(id)}?${new URLSearchParams({ industry, ...(confirmed ? { ok: "1", city: town, ...(ownerTerm ? { term: ownerTerm } : {}) } : {}) })}`;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
@@ -97,7 +120,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       <p className="mt-1 text-ink-3">
         {place.serviceArea ? (
           <>
-            Serves {place.city} <a href={`?${new URLSearchParams({ ...(sp.industry ? { industry: sp.industry } : {}), city: "" })}`} className="ml-1 underline">change town</a>
+            Serves {place.city} <a href={`?${new URLSearchParams({ ...(sp.industry ? { industry: sp.industry } : {}), ...(ownerTerm ? { term: ownerTerm } : {}), city: "" })}`} className="ml-1 underline">change</a>
           </>
         ) : (
           place.address
@@ -156,22 +179,62 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   );
 }
 
-/** For a business that hides its address: which town to check it in. A plain GET form, so it works without JavaScript. */
-function TownForm({ place, industry, tried }: { place: Place; industry?: string; tried: boolean }) {
+/** Other open listings with the same name near a closed one: usually the business's newer profile. */
+async function openTwins(place: Place): Promise<Place[]> {
+  const near = place.lat != null && place.lng != null ? { latitude: place.lat, longitude: place.lng } : null;
+  const { places } = await searchBusinesses(place.name, near).catch(() => ({ places: [] as Place[] }));
+  return places.filter((p) => p.id !== place.id && p.status !== "CLOSED_PERMANENTLY").slice(0, 3);
+}
+
+/**
+ * Asked before the check when we aren't sure (closed listing, hidden address, category that doesn't
+ * fit). A plain GET form, prefilled with our best guess, so confirming is one tap and works without JavaScript.
+ */
+function ConfirmForm({ place, doubts, term, industry, town, others, badTown }: { place: Place; doubts: Doubt[]; term: string; industry?: IndustrySlug; town: string; others: Place[]; badTown?: boolean }) {
+  const closed = doubts.some((d) => d.kind === "closed");
   return (
     <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+      <TrackOnce name="check_confirm_asked" data={{ doubts: doubts.map((d) => d.kind).join(",") }} />
       <p className="eyebrow">Free check</p>
       <h1 className="font-display mt-2 text-[2.2rem] leading-tight sm:text-[2.8rem]">{place.name}</h1>
+      {place.address && !place.serviceArea ? <p className="mt-1 text-ink-3">{place.address}</p> : null}
+      {closed && others.length ? (
+        <div className="card mt-5 p-5 sm:p-7">
+          <p className="font-semibold">Google shows this listing as permanently closed. Is one of these yours?</p>
+          <ul className="mt-3 space-y-2">
+            {others.map((o) => (
+              <li key={o.id}>
+                <a className="underline" href={`/report/${encodeURIComponent(o.id)}${industry ? `?industry=${industry}` : ""}`}>
+                  {o.name}
+                </a>
+                <span className="text-ink-3"> · {o.address || "Address hidden"}{o.primaryTypeLabel ? ` · ${o.primaryTypeLabel}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <form method="get" className="card mt-5 p-5 sm:p-7">
-        <label htmlFor="town" className="font-semibold">Which town do you serve?</label>
-        <p className="mt-1 text-ink-2">
-          Your Google profile hides your address, which is right for a business that goes to its customers. We&apos;ll check who Google and AI assistants recommend in the town you name.
-        </p>
-        {industryBySlug(industry) ? <input type="hidden" name="industry" value={industry} /> : null}
-        <input id="town" name="city" required maxLength={120} className="field mt-3" placeholder="Morrisville, NC" autoComplete="address-level2" />
-        {tried ? <p className="mt-2 text-[0.92rem] text-bad">We couldn&apos;t find that town. Try the town and state, like &ldquo;Cary, NC&rdquo;.</p> : null}
-        <button type="submit" className="btn btn-primary mt-4">Run my check</button>
+        <p className="font-semibold">Before we check, two quick questions so we compare you with the right businesses</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-2">
+          {doubts.map((d) => (
+            <li key={d.kind}>{d.note}</li>
+          ))}
+        </ul>
+        {industry ? <input type="hidden" name="industry" value={industry} /> : null}
+        <input type="hidden" name="ok" value="1" />
+        <label htmlFor="term" className="mt-5 block font-semibold">What would a customer search for to find you?</label>
+        <input id="term" name="term" required minLength={3} maxLength={50} defaultValue={term} className="field mt-2" placeholder="dance studio" />
+        <p className="mt-1 text-[0.9rem] text-ink-3">For example &ldquo;dance classes&rdquo;, &ldquo;pilates studio&rdquo; or &ldquo;mobile dog groomer&rdquo;.</p>
+        <label htmlFor="town" className="mt-4 block font-semibold">{place.lat == null ? "Which town do you serve?" : "Which town are your customers in?"}</label>
+        <input id="town" name="city" required maxLength={120} defaultValue={town} className="field mt-2" placeholder="Morrisville, NC" autoComplete="address-level2" />
+        {badTown ? <p className="mt-2 text-[0.92rem] text-bad">We couldn&apos;t find that town. Try the town and state, like &ldquo;Cary, NC&rdquo;.</p> : null}
+        <button type="submit" className="btn btn-primary mt-5">{closed ? "Check this listing anyway" : "Run my check"}</button>
       </form>
+      {closed ? (
+        <p className="mt-4 text-ink-2">
+          Not listed? <a className="underline" href="/start">Search for your business again</a>.
+        </p>
+      ) : null}
     </div>
   );
 }
