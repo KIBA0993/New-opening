@@ -26,6 +26,7 @@ export interface Place {
   status?: string; // OPERATIONAL, CLOSED_TEMPORARILY, ...
   termHint?: string; // what their website says they do, when Google's category is a catch-all like "Health"
   serviceArea?: boolean; // hides its address on Google; lat/lng/city then come from the town the owner serves
+  ownerTerm?: string; // the business type the owner confirmed ("dance studio"); beats every guess
 }
 
 /** What the owner tells us that Google doesn't know. */

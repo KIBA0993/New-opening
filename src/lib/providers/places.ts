@@ -269,7 +269,7 @@ async function fetchRivals(place: Place, industry: IndustrySlug, term: string): 
   let found: GPlace[] = [];
   // A catch-all type ("Health", "Medical clinic" for a coach) would pull in the wrong kind of business,
   // so those search by what the business really does instead.
-  if (place.primaryType && !(place.termHint || (industry === "wellness" && isGenericLabel(place.primaryTypeLabel)))) {
+  if (place.primaryType && !(place.ownerTerm || place.termHint || (industry === "wellness" && isGenericLabel(place.primaryTypeLabel)))) {
     const data = await gpost<{ places?: GPlace[] }>(
       "places:searchNearby",
       {
