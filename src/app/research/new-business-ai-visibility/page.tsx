@@ -6,8 +6,8 @@ import { founderLd, FOUNDER } from "@/lib/founder";
 import { pct, STUDY as S } from "@/lib/research";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
-const TITLE = "Do AI assistants recommend new businesses? We checked 100 that just opened";
-const DESC = `We asked an AI assistant with live web search about 100 Chicago businesses licensed in the last 1 to 4 months. It named only ${pct(S.namedForCategory)} of them when asked for the best in their neighborhood.`;
+const TITLE = "Do AI assistants recommend new businesses? We checked 122 that just opened";
+const DESC = `We asked an AI assistant with live web search about ${S.sampled} Chicago businesses licensed in the last 1 to 4 months. It named only ${pct(S.namedForCategory)} of them when asked for the best in their neighborhood.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -67,7 +67,7 @@ export default function ResearchPage() {
         <p className="eyebrow">The short answer</p>
         <p className="mt-2 text-[1.12rem] leading-relaxed">
           Mostly no. We took {S.sampled} businesses that got a {S.city} business license 1 to 4 months ago and asked an AI assistant with live web search for the best places of
-          their kind in their neighborhood. It named {S.namedForCategory.n} of them. Most could be found when asked about by name ({pct(S.foundByName)}), so the AI can see them. It just
+          their kind in their neighborhood. It named {S.namedForCategory.n} of them ({pct(S.namedForCategory)}). Most could be found when asked about by name ({pct(S.foundByName)}), so the AI can see them. It just
           doesn&apos;t recommend them yet.
         </p>
       </div>
@@ -133,7 +133,7 @@ export default function ResearchPage() {
       </section>
 
       <aside className="mt-12 rounded-3xl bg-ink p-6 text-paper sm:p-8">
-        <h2 className="font-display text-[1.6rem] leading-tight">Are you one of the {100 - S.namedForCategory.n}?</h2>
+        <h2 className="font-display text-[1.6rem] leading-tight">Are you one of the {S.sampled - S.namedForCategory.n}?</h2>
         <p className="mt-2 text-[#d9d1c3]">The free check asks AI assistants the questions your customers ask and shows who they name instead of you.</p>
         <div className="mt-5 [&_.field]:text-ink [&_p]:text-[#bdb4a5]"><SearchBox size="md" /></div>
       </aside>
@@ -145,14 +145,13 @@ export default function ResearchPage() {
             We took new business licenses issued in {S.city} 30 to 120 days before {dateLabel} ({S.licensesInWindow.toLocaleString("en-US")} licenses) from the city&apos;s public{" "}
             <a className="link" href="https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses/r5kz-chrr" target="_blank" rel="noopener noreferrer">business license data</a>.
           </li>
-          <li>We kept customer-facing businesses in the types above, removed national chains, and picked up to 22 per type in a fixed pseudo-random order. One business was dropped when the run ended mid-check, leaving {S.sampled}.</li>
+          <li>We kept customer-facing businesses in the types above, removed national chains, and picked up to 22 per type in a fixed pseudo-random order. That gave {S.sampled} businesses (only 12 new pet licenses fell in the window).</li>
           <li>We looked each one up with the Google Places API, matching on name and location, and recorded whether it had a listing, its review count and whether it listed a website.</li>
           <li>We asked an AI assistant with live web search, set to Chicago: &quot;What are the best [type] in [neighborhood], Chicago?&quot; A business counted as named only if its distinctive name appeared in the answer.</li>
           <li>We asked the same assistant about each business by exact name and address, and counted it as found when the assistant said it found information about that business. This second measure may be slightly generous.</li>
         </ol>
         <p className="mt-4 text-[0.9rem] text-ink-3">
-          Limits: one city, one AI assistant, one run on one day. AI answers vary between runs and between assistants. Pet businesses were planned but not reached, and the fitness sample is
-          small (12). We&apos;ll re-run this and update the date above when we do. Questions or want the method details? Email{" "}
+          Limits: one city, one AI assistant, one run on one day. AI answers vary between runs and between assistants. The pet sample is small (12), so read per-type numbers as a direction. We&apos;ll re-run this and update the date above when we do. Questions or want the method details? Email{" "}
           <a className="link" href="mailto:support@mapdebut.com">support@mapdebut.com</a>.
         </p>
       </section>

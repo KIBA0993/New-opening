@@ -27,7 +27,7 @@ ${COMPARISONS.map((c) => `- [${c.title}](${SITE_URL}/compare/${c.slug}): ${c.des
 - [About MapDebut](${SITE_URL}/about): who builds it and how it works.
 
 ## Research
-- [Do AI assistants recommend new businesses?](${SITE_URL}/research/new-business-ai-visibility): Nov 2026 study of 100 Chicago businesses licensed 1 to 4 months earlier. An AI assistant with live web search named 5 of 100 when asked for the best in their neighborhood; 72 of 100 were on Google Maps; 26 of the 72 on Maps had under 10 reviews.
+- [Do AI assistants recommend new businesses?](${SITE_URL}/research/new-business-ai-visibility): Nov 2026 study of 122 Chicago businesses licensed 1 to 4 months earlier. An AI assistant with live web search named 6 of 122 (5%) when asked for the best in their neighborhood; 85 of 122 were on Google Maps; 30 of the 85 on Maps had under 10 reviews.
 
 ## Who it's for
 ${INDUSTRIES.map((i) => `- [${i.name}](${SITE_URL}/for/${i.slug}): ${i.who}`).join("\n")}
