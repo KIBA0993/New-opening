@@ -82,7 +82,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       </nav>
       <h1 className="font-display mt-3 text-[2.2rem] leading-[1.1] sm:text-[2.8rem]">{g.title}</h1>
       <p className="mt-3 text-[0.9rem] text-ink-3">
-        By <Link href="/about" className="link">{FOUNDER.name}</Link>, {FOUNDER.role.toLowerCase()} · Updated <time dateTime={g.updated}>{new Date(g.updated + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time>
+        By <Link href="/about" className="link">{FOUNDER.name}</Link>, founder of {SITE_NAME} · Updated <time dateTime={g.updated}>{new Date(g.updated + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time>
       </p>
 
       <div className="mt-6 rounded-2xl border-l-4 border-accent bg-paper-2 p-5">
