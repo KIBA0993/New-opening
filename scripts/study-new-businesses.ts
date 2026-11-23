@@ -8,7 +8,7 @@
 //   3. AI by name: ask about the business by name and address, and whether it could find it.
 //
 // Run (needs GOOGLE_PLACES_API_KEY and ANTHROPIC_API_KEY in .env.local):
-//   npx tsx --env-file=.env.local scripts/study-new-businesses.ts [--max-usd 15] [--per-category 22]
+//   npx tsx --env-file=.env.local scripts/study-new-businesses.ts [--max-usd 15] [--per-category 22] [--no-google]
 // Writes study-out/results.json (one row per business) and study-out/summary.json (the numbers
 // the research page quotes). Re-running resumes from study-out/cache.json, so nothing is paid twice.
 
@@ -23,10 +23,13 @@ const arg = (name: string, d: number) => {
 };
 const MAX_USD = arg("max-usd", 15);
 const PER_CATEGORY = arg("per-category", 22);
+// --no-google: skip Google Places (no Google cost). Then there are no Maps/review numbers, and the
+// category question uses the business's ZIP code instead of its neighborhood.
+const NO_GOOGLE = process.argv.includes("--no-google");
 
 const PLACES_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
-if (!PLACES_KEY || !process.env.ANTHROPIC_API_KEY) {
-  console.error("Set GOOGLE_PLACES_API_KEY and ANTHROPIC_API_KEY (run with --env-file=.env.local).");
+if ((!PLACES_KEY && !NO_GOOGLE) || !process.env.ANTHROPIC_API_KEY) {
+  console.error("Set ANTHROPIC_API_KEY (and GOOGLE_PLACES_API_KEY unless --no-google). Run with --env-file=.env.local.");
   process.exit(1);
 }
 const client = new Anthropic();
@@ -234,10 +237,12 @@ async function main() {
     const row: Row = { name, category: cat.key, licensed: (lic.license_start_date || "").slice(0, 10), address, google: null, categoryQuestion: null, namedForCategory: null, namesInCategoryAnswer: null, nameQuestionFound: null };
     console.log(`\n${name} (${cat.label}, ${address})`);
     try {
-      row.google = await cached(`places:${name}|${address}`, () => findOnGoogle(name, address, at));
+      if (!NO_GOOGLE) row.google = await cached(`places:${name}|${address}`, () => findOnGoogle(name, address, at));
       if (row.google?.status === "CLOSED_PERMANENTLY") continue;
       const area = row.google?.neighborhood || null;
-      const q = `What are the best ${cat.plural} in ${area ? `${area}, ` : ""}Chicago? Give me a few specific places.`;
+      const zip = (lic.zip_code || "").slice(0, 5);
+      const where = area ? `in ${area}, Chicago` : zip ? `near ${zip} in Chicago` : "in Chicago";
+      const q = `What are the best ${cat.plural} ${where}? Give me a few specific places.`;
       row.categoryQuestion = q;
       const ans = await cached(`cat:${q}`, () => ask(CONSUMER_SYSTEM, q));
       row.namedForCategory = namedIn(name, ans.text) || (!!row.google && namedIn(row.google.name, ans.text));
@@ -273,6 +278,7 @@ async function main() {
   );
   const summary = {
     ranAt: new Date().toISOString(),
+    googleChecked: !NO_GOOGLE,
     model: MODEL,
     source: "City of Chicago business licenses (data.cityofchicago.org, dataset r5kz-chrr), new licenses issued 30 to 120 days before the run",
     licensesInWindow: all.length,
