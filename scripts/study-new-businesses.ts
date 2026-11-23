@@ -137,6 +137,7 @@ interface License {
   legal_name?: string;
   address?: string;
   zip_code?: string;
+  neighborhood?: string; // e.g. "ROGERS PARK"
   license_description?: string;
   business_activity?: string;
   license_start_date?: string;
@@ -239,7 +240,8 @@ async function main() {
     try {
       if (!NO_GOOGLE) row.google = await cached(`places:${name}|${address}`, () => findOnGoogle(name, address, at));
       if (row.google?.status === "CLOSED_PERMANENTLY") continue;
-      const area = row.google?.neighborhood || null;
+      const licHood = (lic.neighborhood || "").trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      const area = row.google?.neighborhood || licHood || null;
       const zip = (lic.zip_code || "").slice(0, 5);
       const where = area ? `in ${area}, Chicago` : zip ? `near ${zip} in Chicago` : "in Chicago";
       const q = `What are the best ${cat.plural} ${where}? Give me a few specific places.`;
