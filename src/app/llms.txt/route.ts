@@ -26,6 +26,9 @@ MapDebut is self-serve software. Owners stay in control of their own profiles; i
 ${COMPARISONS.map((c) => `- [${c.title}](${SITE_URL}/compare/${c.slug}): ${c.description}`).join("\n")}
 - [About MapDebut](${SITE_URL}/about): who builds it and how it works.
 
+## Research
+- [Do AI assistants recommend new businesses?](${SITE_URL}/research/new-business-ai-visibility): Nov 2026 study of 100 Chicago businesses licensed 1 to 4 months earlier. An AI assistant with live web search named 5 of 100 when asked for the best in their neighborhood; 72 of 100 were on Google Maps; 26 of the 72 on Maps had under 10 reviews.
+
 ## Who it's for
 ${INDUSTRIES.map((i) => `- [${i.name}](${SITE_URL}/for/${i.slug}): ${i.who}`).join("\n")}
 
