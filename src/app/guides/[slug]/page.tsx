@@ -6,6 +6,14 @@ import { SearchBox } from "@/components/SearchBox";
 import { GUIDES_CONTENT, guideBySlug } from "@/lib/guides";
 import { industryBySlug } from "@/lib/industries";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { founderLd, FOUNDER } from "@/lib/founder";
+
+// A free tool that answers the guide's question directly, shown right under the short answer.
+const TOOL_FOR_GUIDE: Record<string, { href: string; text: string }> = {
+  "google-business-profile-suspended-new-business": { href: "/tools/business-name-checker", text: "Check your business name against Google's rules, free" },
+  "business-not-showing-on-google-maps": { href: "/tools/business-name-checker", text: "Rule out a name problem: free business name checker" },
+  "get-first-google-reviews-new-business": { href: "/tools/google-review-link", text: "Get your direct Google review link and QR code, free" },
+};
 
 export function generateStaticParams() {
   return GUIDES_CONTENT.map((g) => ({ slug: g.slug }));
@@ -34,6 +42,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   ].slice(0, 4);
   const url = `${SITE_URL}/guides/${g.slug}`;
   const howTo = g.sections.find((s) => s.steps);
+  const tool = TOOL_FOR_GUIDE[g.slug];
 
   return (
     <article className="mx-auto max-w-2xl px-4 pt-10 sm:px-6 sm:pt-14">
@@ -50,7 +59,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             image: `${SITE_URL}/opengraph-image`,
             about: g.keyword,
             inLanguage: "en-US",
-            author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+            author: founderLd(),
             publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
           },
           faqLd(g.faqs),
@@ -73,13 +82,22 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       </nav>
       <h1 className="font-display mt-3 text-[2.2rem] leading-[1.1] sm:text-[2.8rem]">{g.title}</h1>
       <p className="mt-3 text-[0.9rem] text-ink-3">
-        Updated <time dateTime={g.updated}>{new Date(g.updated + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time>
+        By <Link href="/about" className="link">{FOUNDER.name}</Link>, {FOUNDER.role.toLowerCase()} · Updated <time dateTime={g.updated}>{new Date(g.updated + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time>
       </p>
 
       <div className="mt-6 rounded-2xl border-l-4 border-accent bg-paper-2 p-5">
         <p className="eyebrow">The short answer</p>
         <p className="mt-2 text-[1.12rem] leading-relaxed">{g.answer}</p>
       </div>
+      <p className="mt-4 text-ink-2">
+        {tool ? (
+          <>
+            <Link href={tool.href} className="link font-semibold">{tool.text}</Link>
+            {" · "}
+          </>
+        ) : null}
+        <Link href={`/start${g.industry ? `?industry=${g.industry}` : ""}`} className="link">{g.topic === "ai" ? "See if AI assistants name your business" : "See where your business shows up"}</Link>, free in one minute.
+      </p>
 
       {g.sections.map((s) => (
         <section key={s.h} className="mt-10">
