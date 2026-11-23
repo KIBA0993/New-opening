@@ -42,12 +42,12 @@ const CATEGORIES: { key: string; label: string; plural: string; test: RegExp }[]
 ];
 const CHAINS = /subway|starbucks|dunkin|mcdonald|portillo|chipotle|qdoba|taco bell|7-eleven|walgreens|cvs|jimmy john|potbelly|domino|papa john|wingstop|great clips|supercuts|european wax|massage envy|planet fitness|orangetheory|petsmart|petco|hotel|inn\b|marriott|hilton/i;
 
-// ---------- cost guard ----------
-let usd = 0;
+// ---------- cost guard (spend is saved in the cache, so the cap holds across restarts) ----------
 function addUsage(u: Anthropic.Beta.BetaUsage) {
   // Opus 5.5 list prices per token; web searches $10 per 1,000.
   const searches = u.server_tool_use?.web_search_requests ?? 0;
   usd += u.input_tokens * 4e-6 + (u.cache_creation_input_tokens ?? 0) * 5e-6 + (u.cache_read_input_tokens ?? 0) * 0.2e-6 + u.output_tokens * 20e-6 + searches * 0.01;
+  saveCache();
   console.log(`  usage in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens ?? 0} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens} searches=${searches} total=$${usd.toFixed(2)}`);
 }
 
@@ -55,7 +55,8 @@ function addUsage(u: Anthropic.Beta.BetaUsage) {
 const cacheFile = `${OUT}/cache.json`;
 mkdirSync(OUT, { recursive: true });
 const cache: Record<string, unknown> = existsSync(cacheFile) ? JSON.parse(readFileSync(cacheFile, "utf8")) : {};
-const saveCache = () => writeFileSync(cacheFile, JSON.stringify(cache, null, 1));
+const saveCache = () => writeFileSync(cacheFile, JSON.stringify({ ...cache, spentUsd: usd }, null, 1));
+let usd = typeof cache.spentUsd === "number" ? cache.spentUsd : 0;
 async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   if (key in cache) return cache[key] as T;
   const v = await fn();
