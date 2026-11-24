@@ -3,16 +3,20 @@ import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
 import { BASE_FAQ, CostCompare, Faq, HowItWorks, KitContents, LaunchPriceLine, Pricing, SampleAnswer, Stats } from "@/components/marketing";
 import { ProductDemo } from "@/components/ProductDemo";
+import { ReportShots } from "@/components/ReportShots";
 import { faqLd, JsonLd } from "@/components/JsonLd";
-import { PRICES } from "@/lib/env";
-import { LAUNCH } from "@/lib/pricing";
+import { kitPrice } from "@/lib/pricing";
+import { autopilotOffersLd, kitOfferLd, priceFacts } from "@/lib/priceFacts";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Section } from "@/components/ui";
 import { INDUSTRIES } from "@/lib/industries";
+import { TRADES } from "@/lib/trades";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const revalidate = 300; // kit price moves with sales, and every price switches when the launch deal ends
 
-export default function Home() {
+export default async function Home() {
+  const prices = priceFacts((await kitPrice()).amount);
   return (
     <>
       <JsonLd
@@ -28,8 +32,8 @@ export default function Home() {
             description: "Launch kit for new local businesses: free AI visibility check, AI-written profiles for Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT, and a weekly autopilot.",
             offers: [
               { "@type": "Offer", name: "Free check", price: "0", priceCurrency: "USD" },
-              { "@type": "Offer", name: "Launch Kit", price: String(LAUNCH.start), priceCurrency: "USD" },
-              { "@type": "Offer", name: "Weekly Autopilot", price: String(PRICES.monthly.amount), priceCurrency: "USD" },
+              kitOfferLd(prices, `${SITE_URL}/pricing`),
+              ...autopilotOffersLd(prices, `${SITE_URL}/autopilot`),
             ],
           },
           faqLd(BASE_FAQ),
@@ -62,6 +66,8 @@ export default function Home() {
 
       <HowItWorks />
 
+      <ReportShots />
+
       <Section eyebrow="The Launch Kit" title="Everything a new business needs to be found, written for you." className="mt-24">
         <KitContents />
       </Section>
@@ -78,6 +84,16 @@ export default function Home() {
             </li>
           ))}
         </ul>
+        <p className="mt-5 text-ink-2">
+          <span className="font-semibold">By trade: </span>
+          {TRADES.map((t, i) => (
+            <span key={t.slug}>
+              {i ? ", " : ""}
+              <Link className="link" href={`/for/${t.slug}`}>{t.name.toLowerCase()}</Link>
+            </span>
+          ))}
+          .
+        </p>
       </Section>
 
       <CostCompare />

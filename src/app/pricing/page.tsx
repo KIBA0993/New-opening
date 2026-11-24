@@ -5,8 +5,8 @@ import { CostCompare, Faq, KitContents, Pricing } from "@/components/marketing";
 import { Section } from "@/components/ui";
 import { COMPARISONS } from "@/lib/compare";
 import { DEAL, dealEndLabel, dealOn, KIT_TRIAL_DAYS } from "@/lib/deal";
-import { PRICES } from "@/lib/env";
 import { kitPrice } from "@/lib/pricing";
+import { autopilotOffersLd, kitOfferLd, priceFacts } from "@/lib/priceFacts";
 import { CONTACT_EMAIL, REFUND_DAYS, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const revalidate = 300; // kit price moves with sales
@@ -21,11 +21,9 @@ export const metadata: Metadata = {
 export default async function PricingPage() {
   const kit = await kitPrice();
   const deal = dealOn();
+  const prices = priceFacts(kit.amount);
   const faqs = [
-    {
-      q: "How much does MapDebut cost?",
-      a: `The check is free. The Launch Kit is a one-time ${kit.label}${deal ? ` during the launch deal (it rises as kits sell, and is $${DEAL.kitAfter} after ${dealEndLabel()})` : ""}. The Weekly Autopilot email is optional: ${PRICES.monthly.label} a month or ${PRICES.yearly.label} a year.`,
-    },
+    { q: "How much does MapDebut cost?", a: prices.sentence },
     {
       q: "Is the Launch Kit a subscription?",
       a: `No. You pay once and keep everything.${KIT_TRIAL_DAYS > 0 ? ` You can add a free ${KIT_TRIAL_DAYS}-day Autopilot trial at checkout, and it only continues if you keep it.` : ""}`,
@@ -61,7 +59,15 @@ export default async function PricingPage() {
             description:
               "Every profile a new local business needs, written for it: Google, Apple Maps, Bing, Yelp, Facebook and ChatGPT, with step-by-step setup and a Google verification coach.",
             brand: { "@type": "Brand", name: SITE_NAME },
-            offers: { "@type": "Offer", price: String(kit.amount), priceCurrency: "USD", url: `${SITE_URL}/pricing`, availability: "https://schema.org/InStock" },
+            offers: kitOfferLd(prices, `${SITE_URL}/pricing`),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: `${SITE_NAME} Weekly Autopilot`,
+            description: "An optional weekly email for a new local business: AI recommendation check, rival moves, a ready-to-post Google update and review replies, and local events to join.",
+            brand: { "@type": "Brand", name: SITE_NAME },
+            offers: autopilotOffersLd(prices, `${SITE_URL}/autopilot`),
           },
           faqLd(faqs),
         ]}

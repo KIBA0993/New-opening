@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PRICES } from "@/lib/env";
 import { kitPrice, launchNote } from "@/lib/pricing";
 import { DEAL, dealEndLabel, dealOn, KIT_TRIAL_DAYS } from "@/lib/deal";
+import { priceFacts } from "@/lib/priceFacts";
 import { BuyButton } from "./BuyButton";
 import { KitBuy } from "./KitBuy";
 import type { Industry } from "@/lib/industries";
@@ -18,8 +19,8 @@ const SAMPLE: Record<string, { q: string; picks: string[]; you: string }> = {
 };
 
 /** A small editorial "receipt" showing what the free check reveals. */
-export function SampleAnswer({ industry = "beauty" }: { industry?: string }) {
-  const s = SAMPLE[industry] || SAMPLE.beauty;
+export function SampleAnswer({ industry = "beauty", sample }: { industry?: string; sample?: { q: string; picks: string[]; you: string } }) {
+  const s = sample || SAMPLE[industry] || SAMPLE.beauty;
   return (
     <figure className="card relative rotate-[0.6deg] p-5 shadow-[0_18px_40px_-24px_rgba(28,26,22,0.45)] sm:p-6">
       <figcaption className="eyebrow !text-ink-3">Example AI answer</figcaption>
@@ -171,7 +172,29 @@ export async function Pricing({ cta = "/start" }: { cta?: string }) {
         </div>
       </div>
       <p className="mt-4 text-[0.9rem] text-ink-3">{REFUND_DAYS}-day money-back promise: not happy, email <a className="link" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> within {REFUND_DAYS} days of paying for a full refund. Cancel the autopilot any time, in two clicks.</p>
+      <PriceFacts amount={kit.amount} />
     </Section>
+  );
+}
+
+/**
+ * The canonical price block: the same words as /pricing, llms.txt and the Offer schema
+ * (src/lib/priceFacts.ts), so search engines and AI assistants quote one set of prices.
+ */
+export function PriceFacts({ amount }: { amount: number }) {
+  const f = priceFacts(amount);
+  return (
+    <div id="prices" className="mt-8 rounded-[14px] border border-line bg-paper-3/60 p-5 sm:p-6">
+      <h3 className="font-display text-[1.2rem]">MapDebut prices{f.validUntil ? `, valid through ${dealEndLabel()}, 2026` : ""}</h3>
+      <dl className="mt-3 grid gap-x-6 gap-y-2 text-[0.95rem] sm:grid-cols-[max-content_1fr]">
+        {f.lines.map((l) => (
+          <div key={l.label} className="contents">
+            <dt className="font-semibold">{l.label}</dt>
+            <dd className="text-ink-2">{l.text}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 

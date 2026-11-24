@@ -3,6 +3,7 @@ import Link from "next/link";
 import { faqLd, JsonLd } from "@/components/JsonLd";
 import { SampleAnswer } from "@/components/marketing";
 import { SearchBox } from "@/components/SearchBox";
+import { ReportShots } from "@/components/ReportShots";
 import { SITE_URL } from "@/lib/site";
 
 const FAQ = [
@@ -33,6 +34,7 @@ export default function Page() {
         </div>
         <SampleAnswer industry="beauty" />
       </div>
+      <div className="-mx-4 sm:-mx-6"><ReportShots className="mt-20" /></div>
       <section className="mx-auto mt-20 max-w-2xl">
         <h2 className="font-display text-[1.8rem]">Questions</h2>
         <dl className="mt-4 divide-y divide-line border-y border-line">
