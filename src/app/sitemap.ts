@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { GUIDES_CONTENT } from "@/lib/guides";
 import { INDUSTRIES } from "@/lib/industries";
+import { TRADES } from "@/lib/trades";
 import { publishedSlugs } from "@/lib/hostedSite";
 import { SITE_URL } from "@/lib/site";
 import { COMPARISONS } from "@/lib/compare";
@@ -23,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/guides`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE_URL}/questions`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     ...INDUSTRIES.map((i) => ({ url: `${SITE_URL}/for/${i.slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 })),
+    ...TRADES.map((t) => ({ url: `${SITE_URL}/for/${t.slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8 })),
     ...GUIDES_CONTENT.map((g) => ({ url: `${SITE_URL}/guides/${g.slug}`, lastModified: new Date(g.updated), changeFrequency: "monthly" as const, priority: 0.7 })),
     // Owners' free pages published from their Launch Kit.
     ...owners.map((slug) => ({ url: `${SITE_URL}/b/${slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.5 })),
