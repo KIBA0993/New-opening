@@ -3,6 +3,7 @@ import { GUIDES_CONTENT } from "@/lib/guides";
 import { INDUSTRIES } from "@/lib/industries";
 import { publishedSlugs } from "@/lib/hostedSite";
 import { SITE_URL } from "@/lib/site";
+import { COMPARISONS } from "@/lib/compare";
 
 export const revalidate = 3600;
 
@@ -13,6 +14,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/tools/chatgpt-visibility-checker`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/tools/google-review-link`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/tools/business-name-checker`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/research/new-business-ai-visibility`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    ...COMPARISONS.map((c) => ({ url: `${SITE_URL}/compare/${c.slug}`, lastModified: new Date(c.updated), changeFrequency: "monthly" as const, priority: 0.7 })),
     { url: `${SITE_URL}/autopilot`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/guides`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE_URL}/questions`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },

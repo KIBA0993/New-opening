@@ -837,10 +837,10 @@ export const GUIDES_CONTENT: Guide[] = [
   {
     slug: "moving-or-duplicate-google-business-profile",
     topic: "google",
-    title: "Moving locations or have two Google profiles? How to fix it without losing reviews",
+    title: "Duplicate Google Business Profile or moving locations? Fix it without losing reviews",
     description: "Google allows one profile per business. What to do when you move, when you find a duplicate, and when a previous tenant's listing sits at your address.",
     keyword: "duplicate google business profile",
-    updated: "2026-11-18",
+    updated: "2026-11-23",
     answer:
       "Google allows one profile per business. If you move, edit the address on your existing profile instead of creating a new one, so you keep your reviews. If you accidentally made a second profile, remove the one with no reviews. If a duplicate you don't control has reviews, ask Google to merge it into yours, because merged profiles keep both sets of reviews.",
     sections: [
@@ -921,10 +921,10 @@ export const GUIDES_CONTENT: Guide[] = [
   {
     slug: "apple-maps-business-connect-new-business",
     topic: "listings",
-    title: "How to get a new business on Apple Maps with Apple Business Connect",
-    description: "Every iPhone uses Apple Maps and Siri. How to add your new business with Apple Business Connect, what verification needs, and what to do when it stalls.",
+    title: "How to add your business to Apple Maps with Apple Business Connect (2026)",
+    description: "Free, step by step: add or claim your business on Apple Maps with Apple Business Connect (formerly Apple Maps Connect), pass verification, and fix a stuck listing.",
     keyword: "how to add business to apple maps",
-    updated: "2026-11-18",
+    updated: "2026-11-23",
     answer:
       "Sign in to Apple Business Connect (businessconnect.apple.com) with an Apple Account, search for your business, and claim it or add it as new. Verify by phone call or by uploading a business document such as a utility bill or license that shows the same name and address. Apple says verification can take up to five business days; owners often report longer. It's free.",
     sections: [
@@ -936,6 +936,23 @@ export const GUIDES_CONTENT: Guide[] = [
           "Enter your name, address, phone, website and category exactly as on Google.",
           "Verify by phone, or upload a document showing the business name and address.",
           "Add photos, hours and links (order, booking, menu) once approved.",
+        ],
+      },
+      {
+        h: "Apple Maps Connect is now Apple Business Connect",
+        p: [
+          "Apple replaced the old Apple Maps Connect (mapsconnect.apple.com) with Apple Business Connect in 2023. If a guide or a search result still sends you to Maps Connect, use businessconnect.apple.com instead. Your place card, photos and hours are all managed there now, and it's still free.",
+        ],
+      },
+      {
+        h: "Best practices for a new business",
+        bullets: [
+          "Use the exact name on your sign, with no added keywords. Apple, like Google, rejects names stuffed with services or locations.",
+          "Copy your address, phone and hours character for character from your Google profile so the two never disagree.",
+          "Pick the most specific category Apple offers, then add a few secondary ones.",
+          "Add at least five real photos: storefront, inside, and your work or menu.",
+          "Add action links (book, order, menu) so iPhone users can act straight from the place card.",
+          "Use Showcases to post an offer or opening news. They appear on your place card.",
         ],
       },
       {
@@ -952,6 +969,8 @@ export const GUIDES_CONTENT: Guide[] = [
       { q: "Is Apple Business Connect free?", a: "Yes. Adding and managing your place card on Apple Maps is free." },
       { q: "Does Apple Maps use my Google listing?", a: "No. Apple has its own data, so you need to add your business separately." },
       { q: "How long does Apple Maps verification take?", a: "Apple says up to about five business days. Owners regularly report a few weeks, especially when the document doesn't exactly match." },
+      { q: "What happened to Apple Maps Connect?", a: "Apple replaced it with Apple Business Connect in 2023. Sign in at businessconnect.apple.com with an Apple Account to add or claim your business." },
+      { q: "Do I need to pay an Apple Business Connect expert?", a: "No. Apple Business Connect is free and self-serve, and most new owners finish in under 30 minutes. Paying someone only makes sense if you manage many locations." },
     ],
     related: ["where-to-list-a-new-business", "bing-places-new-business", "google-business-profile-before-opening"],
   },

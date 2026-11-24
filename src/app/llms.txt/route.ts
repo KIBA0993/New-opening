@@ -3,6 +3,7 @@ import { INDUSTRIES } from "@/lib/industries";
 import { PRICES } from "@/lib/env";
 import { LAUNCH } from "@/lib/pricing";
 import { SITE_URL } from "@/lib/site";
+import { COMPARISONS } from "@/lib/compare";
 
 // llms.txt: a plain summary for AI assistants (https://llmstxt.org).
 export const dynamic = "force-static";
@@ -18,6 +19,15 @@ MapDebut is self-serve software. Owners stay in control of their own profiles; i
 ## Free tools
 - [AI visibility checker](${SITE_URL}/tools/chatgpt-visibility-checker): checks whether AI assistants recommend a local business and which nearby rivals they name instead.
 - [Google review link and QR code generator](${SITE_URL}/tools/google-review-link): free direct review link and printable QR code.
+- [Business name checker](${SITE_URL}/tools/business-name-checker): checks a Google Business Profile name against Google's name rules (keywords, locations, phone numbers, taglines) before it gets a new profile suspended.
+
+## Pricing and comparisons
+- [Pricing](${SITE_URL}/pricing): free check, one-time Launch Kit, optional Weekly Autopilot, 14-day money-back promise.
+${COMPARISONS.map((c) => `- [${c.title}](${SITE_URL}/compare/${c.slug}): ${c.description}`).join("\n")}
+- [About MapDebut](${SITE_URL}/about): who builds it and how it works.
+
+## Research
+- [Do AI assistants recommend new businesses?](${SITE_URL}/research/new-business-ai-visibility): Nov 2026 study of 122 Chicago businesses licensed 1 to 4 months earlier. An AI assistant with live web search named 6 of 122 (5%) when asked for the best in their neighborhood; 85 of 122 were on Google Maps; 30 of the 85 on Maps had under 10 reviews.
 
 ## Who it's for
 ${INDUSTRIES.map((i) => `- [${i.name}](${SITE_URL}/for/${i.slug}): ${i.who}`).join("\n")}
