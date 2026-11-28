@@ -22,6 +22,7 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   yelp: "Yelp",
   facebook: "Facebook",
   chatgpt: "ChatGPT",
+  brave: "Brave Search",
 };
 
 export type Light = "green" | "yellow" | "red";
@@ -422,6 +423,18 @@ const CHECK_YOURSELF: ListingCheck[] = [
   { platform: "bing", state: "claim", note: "ChatGPT's search leans on Bing. Bing Places copies your Google profile in one click.", url: "https://www.bing.com/forbusiness" },
 ];
 
+/** Claude's web search reportedly runs on Brave's index, and Brave has no webmaster console, only a
+ * "submit URL" form that asks it to fetch a page. Only useful when the business has a website. */
+export function braveStep(place: Place): ListingCheck | null {
+  if (!place.website) return null;
+  return {
+    platform: "brave",
+    state: "claim",
+    note: "Claude's web search reportedly uses Brave's index. Paste your website address into Brave's submit form so it fetches your site. Free, no account needed.",
+    url: "https://search.brave.com/submit-url",
+  };
+}
+
 /** Apple Maps, Bing Places and ChatGPT can't be seen from outside: show them as a step to claim, not as "can't tell". */
 function asClaim(l: ListingCheck): ListingCheck {
   if (l.state !== "unknown") return l;
@@ -525,7 +538,7 @@ export const aiReport = cache(async (place: Place, industrySlug: IndustrySlug) =
   }));
   return {
     answers: ans.answers,
-    listings: lst.listings.map(asClaim),
+    listings: [...lst.listings.map(asClaim), ...[braveStep(place)].filter((l): l is ListingCheck => !!l)],
     directories: lst.directories as { found: string[]; missing: string[] } | null,
     rivals,
     demo: ans.demo || lst.demo || rivalsDemo || place.id.startsWith("demo_"),
@@ -724,6 +737,9 @@ export function findFixes(place: Place, report: { answers: EngineAnswer[]; listi
       title: `Claim your ${toClaim.map((l) => PLATFORM_LABEL[l.platform]).join(" and ")} listing${toClaim.length > 1 ? "s" : ""}`,
       why: "Siri and Apple Maps use Apple's listings, and ChatGPT's search leans on Bing. Neither shows up in web searches, so claim them to be sure.",
     });
+  }
+  if (report.listings.some((l) => l.platform === "brave" && l.state === "claim")) {
+    fixes.push({ title: "Send your website to Brave Search", why: "Claude's web search reportedly reads Brave's index, and Brave only fetches sites it knows about. One form, about a minute." });
   }
   if (report.listings.some((l) => l.platform === "chatgpt" && l.state !== "found")) {
     fixes.push({ title: "Claim your ChatGPT business profile", why: "New in 2026. It controls what ChatGPT shows about you." });
