@@ -62,7 +62,7 @@ export interface EngineAnswer {
   sources?: string[]; // sites the engine read or cited (domains)
 }
 
-/** "claim": a platform no outside check can see (Apple Maps, Bing Places, ChatGPT), shown as a step with a link, not counted. */
+/** "claim": a platform no outside check can see (Apple Maps, Bing Places, ChatGPT, Brave Search), shown as a step with a link, not counted. */
 export type ListingState = "found" | "missing" | "different" | "unknown" | "claim";
 
 export interface ListingCheck {
@@ -78,7 +78,8 @@ export type Platform =
   | "bing"
   | "yelp"
   | "facebook"
-  | "chatgpt";
+  | "chatgpt"
+  | "brave";
 
 export interface Rival extends Place {
   distanceMiles?: number;

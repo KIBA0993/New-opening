@@ -515,7 +515,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
         {toClaim.length ? (
           <>
             <h3 className="font-display mt-8 text-[1.3rem]">Claim these too</h3>
-            <p className="mt-1 text-[0.95rem] text-ink-2">No outside check can see these listings, so claim them yourself. Each takes a few minutes.</p>
+            <p className="mt-1 text-[0.95rem] text-ink-2">No outside check can see these, so do them yourself. Each takes a few minutes.</p>
             <ul className="mt-3 divide-y divide-line border-y border-line">
               {toClaim.map((l) => (
                 <li key={l.platform} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -523,7 +523,7 @@ async function AISection({ place, industry }: { place: Place; industry: Industry
                     <p className="font-semibold">{PLATFORM_LABEL[l.platform]}</p>
                     <p className="text-[0.95rem] text-ink-3">{l.note}</p>
                   </div>
-                  {l.url ? <a href={l.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost shrink-0">Claim it ↗</a> : null}
+                  {l.url ? <a href={l.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost shrink-0">{l.platform === "brave" ? "Submit it ↗" : "Claim it ↗"}</a> : null}
                 </li>
               ))}
             </ul>
